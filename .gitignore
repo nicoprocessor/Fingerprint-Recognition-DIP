@@ -1,2 +1,7 @@
+# Pycharm configuration files
 .idea/
+*.iml
+*.xml
+
+# Dataset
 *.BMP
