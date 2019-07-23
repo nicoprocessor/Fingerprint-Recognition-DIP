@@ -1,0 +1,9 @@
+TODO DIP project
+
+1) Find Database
+2) Luigi:
+		-> Image Enhancement
+		-> Ridge Flow Estimation (theta)
+	Nicola:
+		-> Segmentation (test several solutions)
+		-> ROI extraction 
