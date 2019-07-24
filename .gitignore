@@ -5,3 +5,6 @@
 
 # Dataset
 *.BMP
+
+# Python trash
+*.pyc
