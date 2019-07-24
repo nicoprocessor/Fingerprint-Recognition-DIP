@@ -68,3 +68,9 @@ def display_image(img: np.ndarray, cmap: str, title: str):
         plt.imshow(img, cmap=cmap)
     plt.title(title)
     plt.show()
+
+def print_images(images):
+    for i in range(1, len(images) + 1):
+        plt.subplot(1, len(images), i)
+        plt.imshow(images[i-1], cmap='gray')
+    plt.show()
