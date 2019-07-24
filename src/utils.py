@@ -10,34 +10,36 @@ import os
 import cv2
 import numpy as np
 from pathlib import Path
-from typing import Tuple
+from pathlib import PurePath
 import matplotlib.pyplot as plt
 
 
-def load_image(filename: str, cv2_read_param: int = 0) -> Tuple[str, np.ndarray]:
+def load_image(filename: str, cv2_read_param: int = 0) -> np.ndarray:
     """
-    Loads an image from the data folder using cv2.imread
+    Loads an image from the "res" folder
     :param filename: the name of the image file (format must be specified)
     :param cv2_read_param: the parameter for cv2.imread
         As a reference:
         cv2.IMREAD_COLOR (1): Loads a color image. Any transparency of image will be neglected
         cv2.IMREAD_GRAYSCALE (0): Loads image in grayscale mode
         cv2.IMREAD_UNCHANGED (-1): Loads image as such including alpha channel
-    :return: the image read from the file and its name
+    :return: the image read from the filesystem
     """
-    filepath = Path.cwd()/'data'/filename
-    print("Filepath:"+str(filepath))
-    # assert (filepath.exists() is True), "Wrong path: "+str(filepath)
+    filename = filename.split("/")
+    filepath = PurePath(Path.cwd().parent, 'res')
+    for f in filename:
+        filepath = filepath.joinpath(f)
 
-    img_name = str(os.path.splitext(filename)[0])
-    # img_basename = str(Path.cwd() / os.path.splitext(filename)[0])
+    # print("Filepath: "+str(filepath))
+    assert (Path(filepath.as_posix()).exists() is True), "Wrong path: "+str(filepath)
+
     img = cv2.imread(str(filepath), cv2_read_param)
     assert (img is not None), "There was an issue loading the image"
 
     if cv2_read_param != 0:
         # invert channels from BGR to RGB
         img[:, :, :] = img[:, :, ::-1]
-    return img_name, img
+    return img
 
 
 def save_image(filename: str, img: np.ndarray):
