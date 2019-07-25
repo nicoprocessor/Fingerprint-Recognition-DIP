@@ -17,7 +17,6 @@ from utils import print_images_args
 from skimage.morphology import skeletonize
 
 
-
 def extract_roi(img: np.ndarray) -> np.ndarray:
     """
     Extracts the Region Of Interest from the original image.
@@ -100,19 +99,12 @@ def binarization(img: np.ndarray) -> np.ndarray:
         j = 0
     return new
 
+
 def ridge_thinning(img):
     skeleton = skeletonize(img)
     skeleton = skeleton.astype(np.float)
     return skeleton
 
-
-if __name__ == '__main__':
-    fingerprint = load_image(filename="path/21__M_Left_index_finger.BMP", cv2_read_param=0)
-    fingerprint = cv2.bitwise_not(fingerprint)
-    equalized = cv2.equalizeHist(fingerprint)
-    fft_enhanced = fft_enhancement(equalized)
-    thinned = ridge_thinning(binarization(fft_enhanced))
-    print_images([fingerprint, binarization(fft_enhanced), thinned])
 
 def roi_extraction(img: np.ndarray) -> np.ndarray:
     """
@@ -161,6 +153,6 @@ if __name__ == '__main__':
     fft_enhanced = fft_enhancement(equalized)
     binarized = binarization(fft_enhanced)
     region_of_interest = roi_extraction(binarized)
-
-    # print_images([fingerprint, equalized, fft_enhanced, binarization(fft_enhanced)])
-    display_image(region_of_interest, title="ROI cropped")
+    thinned = ridge_thinning(binarized)
+    # print_images([fingerprint, binarization(fft_enhanced), thinned])
+    # display_image(region_of_interest, title="ROI cropped")
