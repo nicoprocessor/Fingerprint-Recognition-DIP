@@ -13,6 +13,9 @@ from utils import load_image
 from utils import display_image
 from utils import print_images
 
+from skimage.morphology import skeletonize
+
+
 
 def extract_roi(img: np.ndarray) -> np.ndarray:
     """
@@ -95,12 +98,19 @@ def binarization(img: np.ndarray) -> np.ndarray:
         j = 0
     return new
 
+def ridge_thinning(img):
+    skeleton = skeletonize(img)
+    skeleton = skeleton.astype(np.float)
+    return skeleton
+
+
 if __name__ == '__main__':
-    fingerprint = load_image(filename="path/29__F_Right_ring_finger.BMP", cv2_read_param=0)
+    fingerprint = load_image(filename="path/21__M_Left_index_finger.BMP", cv2_read_param=0)
     fingerprint = cv2.bitwise_not(fingerprint)
     equalized = cv2.equalizeHist(fingerprint)
     fft_enhanced = fft_enhancement(equalized)
-    print_images([fingerprint, equalized, fft_enhanced, binarization(fft_enhanced)])
+    thinned = ridge_thinning(binarization(fft_enhanced))
+    print_images([fingerprint, binarization(fft_enhanced), thinned])
 
 
 
