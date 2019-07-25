@@ -4,7 +4,9 @@
 *.xml
 
 # Dataset
+SOCOFing/
 *.BMP
 
 # Python trash
 *.pyc
+out/

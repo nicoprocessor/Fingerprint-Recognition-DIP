@@ -7,14 +7,15 @@ __email__ = "nicola.onofri@gmail.com, " \
             "l.bonassi005@studenti.unibs.it"
 
 import numpy as np
+import logging
+from skimage.morphology import skeletonize
 import cv2
 
 from utils import load_image
+from utils import neighbor_coordinates
 from utils import display_image
 from utils import print_images
 from utils import print_images_args
-
-from skimage.morphology import skeletonize
 
 
 def fft_enhancement(img: np.ndarray) -> np.ndarray:
@@ -80,10 +81,51 @@ def binarization(img: np.ndarray) -> np.ndarray:
     return new
 
 
-def ridge_thinning(img):
+def ridge_thinning(img: np.ndarray) -> np.ndarray:
     skeleton = skeletonize(img)
     skeleton = skeleton.astype(np.float)
     return skeleton
+
+
+def block_direction_estimation(img: np.ndarray, threshold: float) -> np.ndarray:
+    """
+    Estimates the direction of each ridge and furrows using Hung least squares approximation
+    and discard background blocks
+    :param img: the original image
+    :param threshold: the level below which a block is discarded
+    :return: the direction map
+    """
+    block_size = 16
+    sobel_kernel_size = 5
+    height, width = img.shape
+    theta_map = np.zeros(img.shape)
+
+    # partial derivatives
+    gx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=sobel_kernel_size)
+    gy = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=sobel_kernel_size)
+
+    for i in range(height):
+        for j in range(width):
+            block_coordinates, new_shape = neighbor_coordinates(seed_coordinates=(i, j),
+                                                                kernel_size=block_size,
+                                                                height=height, width=width)
+
+            block_gx = np.array([gx[px[0], px[1]] for px in block_coordinates]).reshape(new_shape)
+            block_gy = np.array([gy[px[0], px[1]] for px in block_coordinates]).reshape(new_shape)
+
+            # Paper 1 solution - not sure how to handle these results
+            block_information = (2*(block_gx*block_gy)+(block_gx**2-block_gy**2))/ \
+                                (new_shape[0]*new_shape[1]*(block_gx**2+block_gy**2))
+            theta = 0.5*np.arctan((2*block_gx*block_gy)/(block_gx**2-block_gy**2))  # matrix, not scalar
+            # full of NaNs!
+
+            # Paper 2 solution - not sure here either
+            vx = np.sum(2*np.multiply(block_gx, block_gy))
+            vy = np.sum(np.multiply(block_gx**2, block_gy**2))
+            theta_map[i, j] = 0.5*np.arctan(np.divide(vy, vx+1e-6))
+
+            # TODO discard blocks without significant information
+    return theta_map
 
 
 def roi_extraction(img: np.ndarray) -> np.ndarray:
@@ -95,7 +137,7 @@ def roi_extraction(img: np.ndarray) -> np.ndarray:
     :return: the region of interest of the image
     """
     kernel_size = 3
-    # Alternatives: cv2.MORPH_CROSS, cv2.MORPH_ELLIPSE
+    # Alternatives: cv2.MORPH_CROSS, cv2.MORPH_ELLIPSE, cv2.MORPH_RECT
     kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (kernel_size, kernel_size))
     closing = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel=kernel, iterations=1)
     opening = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel=kernel, iterations=1)
@@ -111,21 +153,22 @@ def roi_extraction(img: np.ndarray) -> np.ndarray:
 
     leftmost_index = np.nonzero(sum_columns)[0][0]
     rightmost_index = np.nonzero(sum_columns)[0][-1]
-    uppermost_index = np.nonzero(sum_rows)[0][0]
-    bottommost_index = np.nonzero(sum_rows)[0][-1]
+    highest_index = np.nonzero(sum_rows)[0][0]
+    lowest_index = np.nonzero(sum_rows)[0][-1]
 
     # extract the interesting region
     roi_crop = roi[leftmost_index:rightmost_index,
-               uppermost_index:bottommost_index]
+               highest_index:lowest_index]
     # print("ROI shape: "+str(roi_crop.shape))
     return roi_crop
 
 
 if __name__ == '__main__':
-    # TODO decide a common path for dataset
+    # TODO decide a shared path for dataset
     # fingerprint = load_image(filename="path/29__F_Right_ring_finger.BMP", cv2_read_param=0) # Luigi's path
 
-    fingerprint = load_image(filename="SOCOFing/Real/29__F_Right_ring_finger.BMP", cv2_read_param=0)  # Nicola's path
+    fingerprint = load_image(filename="SOCOFing/Real/29__F_Right_ring_finger.BMP",
+                             cv2_read_param=0)  # Nicola's path
     # display_image(img=fingerprint, cmap="gray", title="Original fingerprint")
 
     fingerprint = cv2.bitwise_not(fingerprint)
@@ -134,5 +177,5 @@ if __name__ == '__main__':
     binarized = binarization(fft_enhanced)
     region_of_interest = roi_extraction(binarized)
     thinned = ridge_thinning(binarized)
-    # print_images([fingerprint, binarization(fft_enhanced), thinned])
-    # display_image(region_of_interest, title="ROI cropped")
+
+    direction_map = block_direction_estimation(binarized, threshold=1.0)

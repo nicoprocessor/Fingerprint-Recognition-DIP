@@ -11,7 +11,44 @@ import cv2
 import numpy as np
 from pathlib import Path
 from pathlib import PurePath
+from typing import Tuple, List
 import matplotlib.pyplot as plt
+
+Pair = Tuple[int, int]
+
+
+def neighbor_coordinates(seed_coordinates: Tuple[int, int], kernel_size: int, height: int, width: int,
+                         allow_diagonals: bool = True, include_seed=True) -> Tuple[List[Pair], Pair]:
+    """
+    Compute the list of the coordinates of the neighbors, given the coordinates of the center, in a 2D matrix
+    :param seed_coordinates: the coordinates of the central element
+    :param kernel_size: the size of the squared kernel
+    :param height: the number of rows
+    :param width: the number of columns
+    :param allow_diagonals: if True computes the neighbors in all 8 directions, if False computes only N-S-E-W
+    :param include_seed: decide whether the seed (central element) must be returned
+    :return: the list of tuples of coordinates around the given element and the size of the neighborhood
+    """
+    pad = kernel_size//2
+
+    # compute border pixels
+    leftmost = max(0, seed_coordinates[1]-pad)
+    rightmost = min(width-1, seed_coordinates[1]+pad+1)
+    highest = max(0, seed_coordinates[0]-pad)
+    lowest = min(height-1, seed_coordinates[0]+pad+1)
+
+    shape = (lowest-highest, rightmost-leftmost)
+
+    if allow_diagonals:
+        neighbors = [(i, j) for j in range(leftmost, rightmost)
+                     for i in range(highest, lowest)]
+    else:
+        pivot_row = set([(i, seed_coordinates[1]) for i in range(highest, lowest)])
+        pivot_col = set([(seed_coordinates[0], j) for j in range(leftmost, rightmost)])
+        neighbors = list(pivot_row.union(pivot_col))
+    if not include_seed:
+        neighbors.remove(seed_coordinates)
+    return neighbors, shape
 
 
 def load_image(filename: str, cv2_read_param: int = 0) -> np.ndarray:
