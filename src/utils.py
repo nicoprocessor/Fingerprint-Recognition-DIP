@@ -55,7 +55,7 @@ def save_image(filename: str, img: np.ndarray):
     cv2.imwrite(str(filepath), img)
 
 
-def display_image(img: np.ndarray, cmap: str, title: str):
+def display_image(img: np.ndarray, title: str = "Image", cmap: str = "gray"):
     """
     Display an image using matplotlib.imshow()
     :param img: original image
@@ -69,8 +69,27 @@ def display_image(img: np.ndarray, cmap: str, title: str):
     plt.title(title)
     plt.show()
 
+
+# TODO still an experiment
+def print_images_args(**images):
+    """
+    Display several images in a single plot
+    :param images: the images to print
+    """
+    for index, (title, image) in enumerate(images.items(), start=1):
+        print(index, title)
+        plt.subplot(1, len(images), index)
+        plt.title(images[str(title)])
+        plt.imshow(image, cmap='gray')
+    plt.show()
+
+
 def print_images(images):
-    for i in range(1, len(images) + 1):
+    """
+    Display several images in a single plot
+    :param images: the images to print
+    """
+    for i in range(1, len(images)+1):
         plt.subplot(1, len(images), i)
         plt.imshow(images[i-1], cmap='gray')
     plt.show()
