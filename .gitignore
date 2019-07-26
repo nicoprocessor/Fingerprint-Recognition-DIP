@@ -6,6 +6,7 @@
 # Dataset
 SOCOFing/
 *.BMP
+*.png
 
 # Python trash
 *.pyc

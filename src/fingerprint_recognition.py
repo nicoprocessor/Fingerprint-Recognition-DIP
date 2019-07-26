@@ -87,25 +87,24 @@ def ridge_thinning(img: np.ndarray) -> np.ndarray:
     return skeleton
 
 
-def block_direction_estimation(img: np.ndarray, threshold: float) -> np.ndarray:
+def block_direction_estimation(img: np.ndarray, block_size: int) -> np.ndarray:
     """
     Estimates the direction of each ridge and furrows using Hung least squares approximation
     and discard background blocks
     :param img: the original image
-    :param threshold: the level below which a block is discarded
+    :param block_size: the size of the block
     :return: the direction map
     """
-    block_size = 16
     sobel_kernel_size = 5
     height, width = img.shape
-    theta_map = np.zeros(img.shape)
+    theta_map = []
 
     # partial derivatives
     gx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=sobel_kernel_size)
     gy = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=sobel_kernel_size)
 
-    for i in range(height):
-        for j in range(width):
+    for i in range(0, height+block_size, block_size):
+        for j in range(0, width+block_size, block_size):
             block_coordinates, new_shape = neighbor_coordinates(seed_coordinates=(i, j),
                                                                 kernel_size=block_size,
                                                                 height=height, width=width)
@@ -113,19 +112,24 @@ def block_direction_estimation(img: np.ndarray, threshold: float) -> np.ndarray:
             block_gx = np.array([gx[px[0], px[1]] for px in block_coordinates]).reshape(new_shape)
             block_gy = np.array([gy[px[0], px[1]] for px in block_coordinates]).reshape(new_shape)
 
-            # Paper 1 solution - not sure how to handle these results
-            block_information = (2*(block_gx*block_gy)+(block_gx**2-block_gy**2))/ \
-                                (new_shape[0]*new_shape[1]*(block_gx**2+block_gy**2))
-            theta = 0.5*np.arctan((2*block_gx*block_gy)/(block_gx**2-block_gy**2))  # matrix, not scalar
-            # full of NaNs!
-
-            # Paper 2 solution - not sure here either
             vx = np.sum(2*np.multiply(block_gx, block_gy))
             vy = np.sum(np.multiply(block_gx**2, block_gy**2))
-            theta_map[i, j] = 0.5*np.arctan(np.divide(vy, vx+1e-6))
-
-            # TODO discard blocks without significant information
+            theta_map.append(0.5*np.arctan(np.divide(vy, vx+1e-6)))
     return theta_map
+
+
+def gabor_filtering(img: np.ndarray, theta_map: np.ndarray, block_size: int) -> np.ndarray:
+    """
+    Gabor filtering
+    :param img: the original image
+    :param theta_map: the matrix containing ridge orientation
+    :param block_size: the size of the Gabor filter
+    :return:
+    """
+    height, width = img.shape
+
+
+    return filtered_img
 
 
 def roi_extraction(img: np.ndarray) -> np.ndarray:
@@ -164,18 +168,17 @@ def roi_extraction(img: np.ndarray) -> np.ndarray:
 
 
 if __name__ == '__main__':
-    # TODO decide a shared path for dataset
-    # fingerprint = load_image(filename="path/29__F_Right_ring_finger.BMP", cv2_read_param=0) # Luigi's path
-
-    fingerprint = load_image(filename="SOCOFing/Real/29__F_Right_ring_finger.BMP",
-                             cv2_read_param=0)  # Nicola's path
-    # display_image(img=fingerprint, cmap="gray", title="Original fingerprint")
+    # fingerprint = load_image(filename="SOCOFing/Real/29__F_Right_ring_finger.BMP",
+    #                          cv2_read_param=0)
+    fingerprint = load_image(filename="line.png",
+                             cv2_read_param=0)
+    display_image(img=fingerprint, cmap="gray", title="Original fingerprint")
 
     fingerprint = cv2.bitwise_not(fingerprint)
-    equalized = cv2.equalizeHist(fingerprint)
-    fft_enhanced = fft_enhancement(equalized)
-    binarized = binarization(fft_enhanced)
-    region_of_interest = roi_extraction(binarized)
-    thinned = ridge_thinning(binarized)
+    # equalized = cv2.equalizeHist(fingerprint)
+    # fft_enhanced = fft_enhancement(equalized)
+    # binarized = binarization(fft_enhanced)
+    # region_of_interest = roi_extraction(binarized)
+    # thinned = ridge_thinning(binarized)
 
-    direction_map = block_direction_estimation(binarized, threshold=1.0)
+    direction_map = block_direction_estimation(img=fingerprint, block_size=16)
