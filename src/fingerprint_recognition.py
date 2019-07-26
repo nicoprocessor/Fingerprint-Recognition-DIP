@@ -8,7 +8,6 @@ __email__ = "nicola.onofri@gmail.com, " \
 
 import numpy as np
 import logging
-import collections
 from skimage.morphology import skeletonize
 import cv2
 
@@ -100,7 +99,7 @@ def gabor_filtering(img: np.ndarray, block_size: int) -> np.ndarray:
     img_height, img_width = img.shape
     adapted_height, adapted_width = img_height, img_width
     filtered_image = np.zeros(img.shape, dtype=img.dtype)
-    theta_map = collections.OrderedDict()
+    theta_map = {}
 
     # partial derivatives
     gx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=sobel_kernel_size)
@@ -132,7 +131,7 @@ def gabor_filtering(img: np.ndarray, block_size: int) -> np.ndarray:
             theta_map[(i//block_size, j//block_size)] = theta_block
 
             # filtering
-            g_kernel = cv2.getGaborKernel((block_size, block_size), 5.0, theta_block, 10.0, 0.5, 0, ktype=cv2.CV_32F)
+            g_kernel = cv2.getGaborKernel((block_size, block_size), 1.0, theta_block, 10.0, 1, ktype=cv2.CV_32F)
             filtered_block = cv2.filter2D(block, cv2.CV_8UC3, g_kernel).reshape(block.shape[0]*block.shape[1], )
 
             for index, px in enumerate(filtered_block):
@@ -143,7 +142,6 @@ def gabor_filtering(img: np.ndarray, block_size: int) -> np.ndarray:
     for coord, theta in theta_map.items():
         print(coord[0], coord[1], theta)
         direction_map[coord[0], coord[1]] = theta
-
     return filtered_image, direction_map
 
 
@@ -185,16 +183,15 @@ def roi_extraction(img: np.ndarray) -> np.ndarray:
 if __name__ == '__main__':
     fingerprint = load_image(filename="orientation_map_test.jpg",
                              cv2_read_param=0)
-    display_image(img=fingerprint, cmap="gray", title="Original fingerprint")
+    # display_image(img=fingerprint, cmap="gray", title="Original fingerprint")
 
     fingerprint = cv2.bitwise_not(fingerprint)
-    # equalized = cv2.equalizeHist(fingerprint)
+    equalized = cv2.equalizeHist(fingerprint)
     # fft_enhanced = fft_enhancement(equalized)
     # binarized = binarization(fft_enhanced)
     # region_of_interest = roi_extraction(binarized)
     # thinned = ridge_thinning(binarized)
 
-    gabor_filtered, block_direction_map = gabor_filtering(img=fingerprint, block_size=16)
-    # print(block_direction_map)
+    gabor_filtered, block_direction_map = gabor_filtering(img=equalized, block_size=16)
     display_image(img=gabor_filtered, title="Gabor filtering")
     print("End")
