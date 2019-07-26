@@ -8,6 +8,7 @@ __email__ = "nicola.onofri@gmail.com, " \
 
 import numpy as np
 import logging
+import collections
 from skimage.morphology import skeletonize
 import cv2
 
@@ -87,49 +88,63 @@ def ridge_thinning(img: np.ndarray) -> np.ndarray:
     return skeleton
 
 
-def block_direction_estimation(img: np.ndarray, block_size: int) -> np.ndarray:
+def gabor_filtering(img: np.ndarray, block_size: int) -> np.ndarray:
     """
     Estimates the direction of each ridge and furrows using Hung least squares approximation
     and discard background blocks
     :param img: the original image
     :param block_size: the size of the block
-    :return: the direction map
+    :return: the filtered image
     """
     sobel_kernel_size = 5
-    height, width = img.shape
-    theta_map = []
+    img_height, img_width = img.shape
+    adapted_height, adapted_width = img_height, img_width
+    filtered_image = np.zeros(img.shape, dtype=img.dtype)
+    theta_map = collections.OrderedDict()
 
     # partial derivatives
     gx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=sobel_kernel_size)
     gy = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=sobel_kernel_size)
 
-    for i in range(0, height+block_size, block_size):
-        for j in range(0, width+block_size, block_size):
-            block_coordinates, new_shape = neighbor_coordinates(seed_coordinates=(i, j),
-                                                                kernel_size=block_size,
-                                                                height=height, width=width)
+    # adapt size
+    if img_height%block_size == 0:
+        adapted_height = img_height+block_size
+    if img_width%block_size == 0:
+        adapted_width = img_width+block_size
 
-            block_gx = np.array([gx[px[0], px[1]] for px in block_coordinates]).reshape(new_shape)
-            block_gy = np.array([gy[px[0], px[1]] for px in block_coordinates]).reshape(new_shape)
+    direction_map = np.zeros(shape=(adapted_height, adapted_width))
+
+    for i in range(0, adapted_height, block_size):
+        for j in range(0, adapted_width, block_size):
+            block_coordinates, neighborhood_shape = neighbor_coordinates(seed_coordinates=(i, j),
+                                                                         kernel_size=block_size,
+                                                                         height=img_height, width=img_width)
+
+            # block direction estimation
+            block = np.array([fingerprint[px[0], px[1]] for px in block_coordinates]).reshape(neighborhood_shape)
+            block_gx = np.array([gx[px[0], px[1]] for px in block_coordinates]).reshape(neighborhood_shape)
+            block_gy = np.array([gy[px[0], px[1]] for px in block_coordinates]).reshape(neighborhood_shape)
 
             vx = np.sum(2*np.multiply(block_gx, block_gy))
             vy = np.sum(np.multiply(block_gx**2, block_gy**2))
-            theta_map.append(0.5*np.arctan(np.divide(vy, vx+1e-6)))
-    return theta_map
 
+            theta_block = 0.5*np.arctan(np.divide(vy, vx+1e-6))
+            theta_map[(i//block_size, j//block_size)] = theta_block
 
-def gabor_filtering(img: np.ndarray, theta_map: np.ndarray, block_size: int) -> np.ndarray:
-    """
-    Gabor filtering
-    :param img: the original image
-    :param theta_map: the matrix containing ridge orientation
-    :param block_size: the size of the Gabor filter
-    :return:
-    """
-    height, width = img.shape
+            # filtering
+            g_kernel = cv2.getGaborKernel((block_size, block_size), 5.0, theta_block, 10.0, 0.5, 0, ktype=cv2.CV_32F)
+            filtered_block = cv2.filter2D(block, cv2.CV_8UC3, g_kernel).reshape(block.shape[0]*block.shape[1], )
 
+            for index, px in enumerate(filtered_block):
+                current_coordinates = block_coordinates[index]
+                filtered_image[current_coordinates[0], current_coordinates[1]] = px
 
-    return filtered_img
+    # reconvert theta_map to np.array
+    for coord, theta in theta_map.items():
+        print(coord[0], coord[1], theta)
+        direction_map[coord[0], coord[1]] = theta
+
+    return filtered_image, direction_map
 
 
 def roi_extraction(img: np.ndarray) -> np.ndarray:
@@ -168,9 +183,7 @@ def roi_extraction(img: np.ndarray) -> np.ndarray:
 
 
 if __name__ == '__main__':
-    # fingerprint = load_image(filename="SOCOFing/Real/29__F_Right_ring_finger.BMP",
-    #                          cv2_read_param=0)
-    fingerprint = load_image(filename="line.png",
+    fingerprint = load_image(filename="orientation_map_test.jpg",
                              cv2_read_param=0)
     display_image(img=fingerprint, cmap="gray", title="Original fingerprint")
 
@@ -181,4 +194,7 @@ if __name__ == '__main__':
     # region_of_interest = roi_extraction(binarized)
     # thinned = ridge_thinning(binarized)
 
-    direction_map = block_direction_estimation(img=fingerprint, block_size=16)
+    gabor_filtered, block_direction_map = gabor_filtering(img=fingerprint, block_size=16)
+    # print(block_direction_map)
+    display_image(img=gabor_filtered, title="Gabor filtering")
+    print("End")
