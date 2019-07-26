@@ -6,18 +6,58 @@ __license__ = "GPL"
 __email__ = "nicola.onofri@gmail.com, " \
             "l.bonassi005@studenti.unibs.it"
 
-import os
 import cv2
 import numpy as np
 from pathlib import Path
 from pathlib import PurePath
-from typing import Tuple, List
+from typing import Tuple, List, Union
 import matplotlib.pyplot as plt
 
 Pair = Tuple[int, int]
+Scalar = Union[int, float, np.float32]
 
 
-def neighbor_coordinates(seed_coordinates: Tuple[int, int], kernel_size: int, height: int, width: int,
+def inclusive_range(start: Scalar, stop: Scalar, step: Scalar = 1):
+    """
+    Like a normal range, but with inclusive end
+    :param start: starting element
+    :param stop: final element
+    :param step: range step
+    """
+    assert ((isinstance(start, int) or isinstance(start, float)) and
+            (isinstance(stop, int) or isinstance(stop, float)) and
+            (isinstance(step, int) or isinstance(step, float))), "Wrong argument type"
+    current = start
+    while current <= stop:
+        yield current
+        current += step
+
+
+def check_membership_in_sorted_set_and_pop(element: Scalar, sorted_list: List[Scalar]) -> Tuple[bool, List[Scalar]]:
+    """
+    Check if an element is in the sorted list without looping on the entire list.
+    If the element is in the list, then returns the list without the elements
+    that are smaller than the searched element.
+    :param element: the searched element
+    :param sorted_list: the sorted list
+    :return: True if the element is in the list, False otherwise.
+    Moreover returns the list without the elements that are smaller than the searched element.
+    """
+    assert (len(sorted_list) > 0), "Empty list"
+    assert (isinstance(element, int) or isinstance(element, float)), "Can only search for single elements"
+    assert (sorted(sorted_list) == sorted_list), "List is unsorted"
+
+    while True:
+        current_element = sorted_list[0]
+        if element == current_element:
+            return True, sorted_list
+        elif current_element > element:
+            return False, sorted_list
+        else:
+            sorted_list = sorted_list[1:]  # pop head
+
+
+def neighbor_coordinates(seed_coordinates: Pair, kernel_size: int, height: int, width: int,
                          allow_diagonals: bool = True, include_seed=True) -> Tuple[List[Pair], Pair]:
     """
     Compute the list of the coordinates of the neighbors, given the coordinates of the center, in a 2D matrix
@@ -27,7 +67,7 @@ def neighbor_coordinates(seed_coordinates: Tuple[int, int], kernel_size: int, he
     :param width: the number of columns
     :param allow_diagonals: if True computes the neighbors in all 8 directions, if False computes only N-S-E-W
     :param include_seed: decide whether the seed (central element) must be returned
-    :return: the list of tuples of coordinates around the given element and the size of the neighborhood
+    :return: the list of coordinates around the given element and the size of the neighborhood
     """
     pad = kernel_size//2
 
@@ -53,7 +93,7 @@ def neighbor_coordinates(seed_coordinates: Tuple[int, int], kernel_size: int, he
 
 def load_image(filename: str, cv2_read_param: int = 0) -> np.ndarray:
     """
-    Loads an image from the "res" folder
+    Loads an image from the "res" folder of the project
     :param filename: the name of the image file (format must be specified)
     :param cv2_read_param: the parameter for cv2.imread
         As a reference:
