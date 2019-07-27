@@ -10,11 +10,14 @@ __email__ = "nicola.onofri@gmail.com, " \
 import numpy as np
 import logging
 from skimage.morphology import skeletonize
+from typing import Tuple, Union
 import cv2
 
+import utils
 from utils import load_image
 from utils import neighbor_coordinates
 from utils import display_image
+from utils import inclusive_range
 from utils import print_images
 from utils import print_color_image
 
@@ -94,61 +97,103 @@ def ridge_thinning(img: np.ndarray) -> np.ndarray:
     return skeleton
 
 
+# TODO display block orientation map
+def display_orientation_map(ridge_orientation: np.ndarray, block_size: int) -> np.ndarray:
+    """
+    Displays the vector field defined by the ridge orientation matrix
+    :param ridge_orientation: the ridge orientation matrix
+    :param block_size: the size of each block
+    :return:
+    """
+    result_shape = (ridge_orientation.shape[0]*block_size, ridge_orientation.shape[0]*block_size)
+    result_image = np.zeros(result_shape)
 
-def gabor_filtering(img: np.ndarray, block_size: int) -> np.ndarray:
+    # loop over every element of the ridge orientation map
+
+    # convert the current angle to a line slope
+
+    # translate the line according to the block position
+    pass
+
+
+def gabor_filtering_block_level(img: np.ndarray, block_size: int = 16,
+                                gabor_kernel_size: Union[int, None] = None,
+                                lpf_size: int = 5, sobel_kernel_size: int = 5) -> Tuple[np.ndarray, np.ndarray]:
     """
     Estimates the direction of each ridge and furrows using Hung least squares approximation
     and discard background blocks
     :param img: the original image
-    :param block_size: the size of the block
+    :param block_size: the size of the block. By default it is set at 16.
+    :param gabor_kernel_size: the size of the Gabor kernel used to extract local features.
+                By default it is set to be equal to the block size.
+    :param lpf_size: the size of the low pass filter kernel used to improve the orientation ridge.
+                By default it is set at 5.
+    :param sobel_kernel_size: the size of the Sobel kernel used to extract partial derivatives.
+                By default it is set at 5.
     :return: the filtered image
     """
-    sobel_kernel_size = 5
     img_height, img_width = img.shape
     adapted_height, adapted_width = img_height, img_width
     filtered_image = np.zeros(img.shape, dtype=img.dtype)
-    theta_map = {}
+    # theta_map = {}
+    phi_map = {}
+    ridge_orientation_map = {}
+
+    if gabor_kernel_size is None:
+        gabor_kernel_size = block_size
 
     # partial derivatives
     gx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=sobel_kernel_size)
     gy = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=sobel_kernel_size)
 
-    # adapt size
-    if img_height%block_size == 0:
-        adapted_height = img_height+block_size
-    if img_width%block_size == 0:
-        adapted_width = img_width+block_size
-
     direction_map = np.zeros(shape=(adapted_height, adapted_width))
 
-    for i in range(0, adapted_height, block_size):
-        for j in range(0, adapted_width, block_size):
-            block_coordinates, neighborhood_shape = neighbor_coordinates(seed_coordinates=(i, j),
-                                                                         kernel_size=block_size,
-                                                                         height=img_height, width=img_width)
+    for i in inclusive_range(block_size//2, img_height, block_size):
+        for j in inclusive_range(block_size//2, img_width, block_size):
+            neighborhood_coordinates, neighborhood_shape = neighbor_coordinates(seed_coordinates=(i, j),
+                                                                                kernel_size=block_size,
+                                                                                height=img_height, width=img_width)
 
             # block direction estimation
-            block = np.array([fingerprint[px[0], px[1]] for px in block_coordinates]).reshape(neighborhood_shape)
-            block_gx = np.array([gx[px[0], px[1]] for px in block_coordinates]).reshape(neighborhood_shape)
-            block_gy = np.array([gy[px[0], px[1]] for px in block_coordinates]).reshape(neighborhood_shape)
+            image_block = np.array([img[px[0], px[1]] for px in neighborhood_coordinates]).reshape(neighborhood_shape)
+            block_gx = np.array([gx[px[0], px[1]] for px in neighborhood_coordinates]).reshape(neighborhood_shape)
+            block_gy = np.array([gy[px[0], px[1]] for px in neighborhood_coordinates]).reshape(neighborhood_shape)
 
             vx = np.sum(2*np.multiply(block_gx, block_gy))
             vy = np.sum(np.multiply(block_gx**2, block_gy**2))
+            theta_block = 0.5*np.arctan(np.divide(vy, vx+1e-6))  # scalar
+            # theta_map[(i//block_size, j//block_size)] = theta_block # leave it here, just in case
 
-            theta_block = 0.5*np.arctan(np.divide(vy, vx+1e-6))
-            theta_map[(i//block_size, j//block_size)] = theta_block
+            # smoothing & improving orientation approximation
+            phi_map[i, j] = (np.cos(2*theta_block), np.sin(2*theta_block))  # (phi_x, phi_y)
 
-            # filtering
-            g_kernel = cv2.getGaborKernel((block_size, block_size), 1.0, theta_block, 10.0, 1, ktype=cv2.CV_32F)
-            filtered_block = cv2.filter2D(block, cv2.CV_8UC3, g_kernel).reshape(block.shape[0]*block.shape[1], )
+            # convert to continuous vector field, by expanding each phi_block
+            phi_x_block = phi_map[i, j][0]*np.ones(neighborhood_shape)
+            phi_y_block = phi_map[i, j][1]*np.ones(neighborhood_shape)
 
-            for index, px in enumerate(filtered_block):
-                current_coordinates = block_coordinates[index]
+            # low pass filtering with a median kernel, unit integral
+            lpf_phi_x_block = cv2.blur(phi_x_block, (lpf_size, lpf_size))  # phi'_x
+            lpf_phi_y_block = cv2.blur(phi_y_block, (lpf_size, lpf_size))  # phi'_y
+
+            # save the current orientation to the ridge map (dictionary)
+            current_block_ridge_orientation = 0.5*np.arctan(np.divide(lpf_phi_y_block, lpf_phi_x_block))[0, 0]
+            ridge_orientation_map[(i, j)] = current_block_ridge_orientation
+            print(current_block_ridge_orientation)
+
+            # Gabor filtering according to estimated ridge block orientation
+            gabor_kernel = cv2.getGaborKernel((block_size, block_size), 1.0, current_block_ridge_orientation, 10.0, 1,
+                                              ktype=cv2.CV_32F)
+            gabor_filtered_block = cv2.filter2D(image_block, -1, gabor_kernel). \
+                reshape(image_block.shape[0]*image_block.shape[1], )
+
+            # set the computed pixels in the destination image
+            for index, px in enumerate(gabor_filtered_block):
+                current_coordinates = neighborhood_coordinates[index]
                 filtered_image[current_coordinates[0], current_coordinates[1]] = px
 
-    # reconvert theta_map to np.array
-    for coord, theta in theta_map.items():
-        direction_map[coord[0], coord[1]] = theta
+    # reconvert direction_map to np.array
+    for coord, ridge_orientation in ridge_orientation_map.items():
+        direction_map[coord[0], coord[1]] = ridge_orientation
     return filtered_image, direction_map
 
 
@@ -234,3 +279,6 @@ if __name__ == '__main__':
 
     label_map, label = find_lines(img)
     print_fingerprint_lines(label_map, label)
+    gabor_filtered, ridge_map = gabor_filtering_block_level(img=equalized)
+    display_image(img=gabor_filtered, title="Gabor filtering")
+    print("End")
