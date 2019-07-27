@@ -113,6 +113,26 @@ def gabor_filtering(img: np.ndarray, block_size: int = 16,
                     lpf_size: int = 5, sobel_kernel_size: int = 5,
                     precise_orientation_map: bool = True) -> Tuple[np.ndarray, np.ndarray]:
     """
+    Displays the vector field defined by the ridge orientation matrix
+    :param ridge_orientation: the ridge orientation matrix
+    :param block_size: the size of each block
+    :return:
+    """
+    result_shape = (ridge_orientation.shape[0]*block_size, ridge_orientation.shape[0]*block_size)
+    result_image = np.zeros(result_shape)
+
+    # loop over every element of the ridge orientation map
+
+    # convert the current angle to a line slope
+
+    # translate the line according to the block position
+    pass
+
+
+def gabor_filtering_block_level(img: np.ndarray, block_size: int = 16,
+                                gabor_kernel_size: Union[int, None] = None,
+                                lpf_size: int = 5, sobel_kernel_size: int = 5) -> Tuple[np.ndarray, np.ndarray]:
+    """
     Estimates the direction of each ridge and furrows using Hung least squares approximation
     and discard background blocks
     :param img: the original image
