@@ -190,12 +190,12 @@ def pre_processing(img):
 
 def find_lines(img):
     height, width = img.shape
-    label_map = np.zeros(img.shape, np.uint8)
+    label_map = {}
     label = 1
     for i in range(height):
         for j in range(width):
-            if img[i][j] == 1 and label_map[i][j] == 0:
-                label_map[i][j] = label
+            if img[i][j] == 1 and (i, j) not in label_map:
+                label_map[(i, j)] = label
                 label_line(i, j, label_map, label, height, width)
                 label += 1
     return label_map, label
@@ -204,23 +204,24 @@ def find_lines(img):
 def label_line(i, j, label_map, label, height, width):
     for h in range(max(0, i - 1), min(height, i + 2)):
         for k in range(max(0, j - 1), min(width, j + 2)):
-            if img[h][k] == 1 and label_map[h][k] == 0:
-                label_map[h][k] = label
+            if img[h][k] == 1 and (h, k) not in label_map:
+                label_map[(h, k)] = label
                 label_line(h, k, label_map, label, height, width)
 
 
-## Very slow, use only for test
 def print_fingerprint_lines(label_map, label):
     height, width = img.shape
     blank = np.zeros((height, width, 3), np.uint8)
+    current = 0
     for l in range(1, label+1):
-        r = np.random.randint(50, 255)
-        g = np.random.randint(50, 255)
-        b = np.random.randint(50, 255)
-        for i in range(height):
-            for j in range(width):
-                if label_map[i][j] == l:
-                    blank[i][j] = (b, g, r)
+        pos = [k for k, v in label_map.items() if v == l]
+        if(current != l):
+            current = l
+            r = np.random.randint(50, 255)
+            g = np.random.randint(50, 255)
+            b = np.random.randint(50, 255)
+        for (i, j) in pos:
+         blank[i][j] = (b, g, r)
     print_color_image(blank)
 
 
