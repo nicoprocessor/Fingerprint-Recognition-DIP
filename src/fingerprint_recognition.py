@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # _*_ coding: utf-8 _*_
 """Main module"""
+
 __author__ = "Nicola Onofri, Luigi Bonassi"
 __license__ = "GPL"
 __email__ = "nicola.onofri@gmail.com, " \
@@ -15,76 +16,83 @@ from utils import load_image
 from utils import neighbor_coordinates
 from utils import display_image
 from utils import print_images
-from utils import print_images_args
+from utils import print_color_image
 
 
-def fft_enhancement(img: np.ndarray) -> np.ndarray:
-    """
-    Image enhancement using fft
-    :param img: the original image
-    :return: the enhanced image using fft
-    """
-    block_size = 32
-    height, width = img.shape
-    i = j = 0
-    K = 0.1
-    new = np.zeros(img.shape)
-    while i < height:
-        while j < width:
-            tmp = np.zeros((block_size, block_size), dtype=img.dtype)
-            for h in range(i, min(i+block_size, height)):
-                for k in range(j, min(j+block_size, width)):
-                    tmp[h-i][k-j] = img[h][k]
-            # now tmp is a 32x32 (or less) image
-            # fft enhancement
-            tmp_frequency = np.fft.fft2(tmp)
-            new_tmp = np.real(np.fft.ifft2(tmp_frequency*(np.abs(tmp_frequency)**K)))
-            for h in range(i, min(i+block_size, height)):
-                for k in range(j, min(j+block_size, width)):
-                    new[h][k] = new_tmp[h-i][k-j]
-            j += 32
-        i += 32
-        j = 0
-    return new
+# def fft_enhancement(img: np.ndarray) -> np.ndarray:
+#     """
+#     Image enhancement using fft
+#     :param img: the original image
+#     :return: the enhanced image using fft
+#     """
+#     block_size = 16
+#     height, width = img.shape
+#     i = j = 0
+#     K = 0.45
+#     new = np.zeros(img.shape)
+#     while i < height:
+#         while j < width:
+#             tmp = np.zeros((block_size, block_size), dtype=img.dtype)
+#             for h in range(i, min(i+block_size, height)):
+#                 for k in range(j, min(j+block_size, width)):
+#                     tmp[h-i][k-j] = img[h][k]
+#             # now tmp is a 32x32 (or less) image
+#             # fft enhancement
+#             tmp_frequency = np.fft.fft2(tmp)
+#             new_tmp = (np.real(np.fft.ifft2(tmp_frequency*(np.abs(tmp_frequency)**K))))/(32*32)
+#             for h in range(i, min(i+block_size, height)):
+#                 for k in range(j, min(j+block_size, width)):
+#                     new[h][k] = new_tmp[h-i][k-j]
+#             j += 32
+#         i += 32
+#         j = 0
+#     return new
 
 
-def binarization(img: np.ndarray) -> np.ndarray:
-    """
-    Image binarization
-    :param img: the original image
-    :return: the binarized image
-    """
-    block_size = 16
-    height, width = img.shape
-    i = j = 0
-    new = np.zeros(img.shape)
-    while i < height:
-        while j < width:
-            tmp = np.zeros((block_size, block_size), dtype=img.dtype)
-            count = 0
-            pixel_sum = 0
-            for h in range(i, min(i+block_size, height)):
-                for k in range(j, min(j+block_size, width)):
-                    tmp[h-i][k-j] = img[h][k]
-                    count += 1
-                    pixel_sum += img[h][k]
-            mean = pixel_sum/count
-            for h in range(i, min(i+block_size, height)):
-                for k in range(j, min(j+block_size, width)):
-                    if tmp[h-i][k-j] > mean:
-                        new[h][k] = 1
-                    else:
-                        new[h][k] = 0
-            j += 16
-        i += 16
-        j = 0
-    return new
+# def binarization(img: np.ndarray) -> np.ndarray:
+#     """
+#     Image binarization
+#     :param img: the original image
+#     :return: the binarized image
+#     """
+#     block_size = 32
+#     height, width = img.shape
+#     i = j = 0
+#     new = np.zeros(img.shape)
+#     while i < height:
+#         while j < width:
+#             tmp = np.zeros((block_size, block_size), dtype=img.dtype)
+#             count = 0
+#             pixel_sum = 0
+#             for h in range(i, min(i+block_size, height)):
+#                 for k in range(j, min(j+block_size, width)):
+#                     tmp[h-i][k-j] = img[h][k]
+#                     count += 1
+#                     pixel_sum += img[h][k]
+#             mean = pixel_sum/count
+#             for h in range(i, min(i+block_size, height)):
+#                 for k in range(j, min(j+block_size, width)):
+#                     if tmp[h-i][k-j] > 1.1*mean and mean >= 5:
+#                         new[h][k] = 1
+#                     else:
+#                         new[h][k] = 0
+#             j += block_size
+#         i += block_size
+#         j = 0
+#     return new
+
+
+def otsu(img: np.ndarray) -> np.ndarray:
+    blur = cv2.GaussianBlur(img, (5, 5), 0)
+    ret3, th3 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return th3/255
 
 
 def ridge_thinning(img: np.ndarray) -> np.ndarray:
     skeleton = skeletonize(img)
     skeleton = skeleton.astype(np.float)
     return skeleton
+
 
 
 def gabor_filtering(img: np.ndarray, block_size: int) -> np.ndarray:
@@ -140,58 +148,88 @@ def gabor_filtering(img: np.ndarray, block_size: int) -> np.ndarray:
 
     # reconvert theta_map to np.array
     for coord, theta in theta_map.items():
-        print(coord[0], coord[1], theta)
         direction_map[coord[0], coord[1]] = theta
     return filtered_image, direction_map
 
 
-def roi_extraction(img: np.ndarray) -> np.ndarray:
-    """
-    Extracts the Region of interest from the original image.
-    The ROI extraction process consists in subtracting the closed image from the opened image
-    and then discarding the borders.
-    :param img: the original image
-    :return: the region of interest of the image
-    """
-    kernel_size = 3
-    # Alternatives: cv2.MORPH_CROSS, cv2.MORPH_ELLIPSE, cv2.MORPH_RECT
-    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (kernel_size, kernel_size))
-    closing = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel=kernel, iterations=1)
-    opening = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel=kernel, iterations=1)
-    # display_image(opening, title="Opening")
-    # display_image(closing, title="Closing")
+def clean(img):
+    height, width = img.shape
+    new = np.zeros(img.shape, img.dtype)
+    for i in range(height):
+        for j in range(width):
+            new[i][j] = img[i][j]
+            if new[i][j] == 1:
+                count = 0
+                for h in range(max(0, i-2), min(height, i+3)):
+                    for k in range(max(0, j - 2), min(width, j + 3)):
+                        if img[h][k] == 1:
+                            count += 1
+                if count <= 2:
+                    new[i][j] = 0
+    return new
 
-    roi = opening-closing
-    # display_image(roi, title="ROI")
 
-    # find ROI edges
-    sum_columns = np.sum(roi, axis=0)
-    sum_rows = np.sum(roi, axis=1)
+def skeleton_enhancement(img):
+    tmp = clean(img)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    closing = cv2.morphologyEx(tmp, cv2.MORPH_CLOSE, kernel, iterations=1)
+    skel = ridge_thinning(closing)
+    return skel
 
-    leftmost_index = np.nonzero(sum_columns)[0][0]
-    rightmost_index = np.nonzero(sum_columns)[0][-1]
-    highest_index = np.nonzero(sum_rows)[0][0]
-    lowest_index = np.nonzero(sum_rows)[0][-1]
 
-    # extract the interesting region
-    roi_crop = roi[leftmost_index:rightmost_index,
-               highest_index:lowest_index]
-    # print("ROI shape: "+str(roi_crop.shape))
-    return roi_crop
+def pre_processing(img):
+    fingerprint = cv2.bitwise_not(img)
+    equalized = cv2.equalizeHist(fingerprint)
+    gabor_filtered, block_direction_map = gabor_filtering(img=equalized, block_size=16)
+    binarized = otsu(gabor_filtered)
+    thinned = ridge_thinning(binarized)
+    cleaned = clean(thinned)
+    enhanced = skeleton_enhancement(cleaned)
+    return enhanced
+
+
+def find_lines(img):
+    height, width = img.shape
+    label_map = np.zeros(img.shape, np.uint8)
+    label = 1
+    for i in range(height):
+        for j in range(width):
+            if img[i][j] == 1 and label_map[i][j] == 0:
+                label_map[i][j] = label
+                label_line(i, j, label_map, label, height, width)
+                label += 1
+    return label_map, label
+
+
+def label_line(i, j, label_map, label, height, width):
+    for h in range(max(0, i - 1), min(height, i + 2)):
+        for k in range(max(0, j - 1), min(width, j + 2)):
+            if img[h][k] == 1 and label_map[h][k] == 0:
+                label_map[h][k] = label
+                label_line(h, k, label_map, label, height, width)
+
+
+## Very slow, use only for test
+def print_fingerprint_lines(label_map, label):
+    height, width = img.shape
+    blank = np.zeros((height, width, 3), np.uint8)
+    for l in range(1, label+1):
+        r = np.random.randint(50, 255)
+        g = np.random.randint(50, 255)
+        b = np.random.randint(50, 255)
+        for i in range(height):
+            for j in range(width):
+                if label_map[i][j] == l:
+                    blank[i][j] = (b, g, r)
+    print_color_image(blank)
 
 
 if __name__ == '__main__':
-    fingerprint = load_image(filename="orientation_map_test.jpg",
+    fingerprint = load_image(filename="test4.jpg",
                              cv2_read_param=0)
     # display_image(img=fingerprint, cmap="gray", title="Original fingerprint")
 
-    fingerprint = cv2.bitwise_not(fingerprint)
-    equalized = cv2.equalizeHist(fingerprint)
-    # fft_enhanced = fft_enhancement(equalized)
-    # binarized = binarization(fft_enhanced)
-    # region_of_interest = roi_extraction(binarized)
-    # thinned = ridge_thinning(binarized)
+    img = pre_processing(fingerprint)
 
-    gabor_filtered, block_direction_map = gabor_filtering(img=equalized, block_size=16)
-    display_image(img=gabor_filtered, title="Gabor filtering")
-    print("End")
+    label_map, label = find_lines(img)
+    print_fingerprint_lines(label_map, label)

@@ -170,3 +170,9 @@ def print_images(images):
         plt.subplot(1, len(images), i)
         plt.imshow(images[i-1], cmap='gray')
     plt.show()
+
+
+def print_color_image(image):
+    image = image[:, :, ::-1]
+    plt.imshow(image, cmap='gray')
+    plt.show()
