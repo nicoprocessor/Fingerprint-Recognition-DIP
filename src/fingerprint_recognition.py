@@ -76,7 +76,7 @@ from utils import print_color_image
 #             mean = pixel_sum/count
 #             for h in range(i, min(i+block_size, height)):
 #                 for k in range(j, min(j+block_size, width)):
-#                     if tmp[h-i][k-j] > 1.1*mean and mean >= 5:
+#                     if tmp[h-i][k-j] > 1.2*mean and mean >= 10:
 #                         new[h][k] = 1
 #                     else:
 #                         new[h][k] = 0
@@ -177,7 +177,7 @@ def gabor_filtering(img: np.ndarray, block_size: int = 16,
                 improved_orientation_map = orientation_map
 
             # Gabor filtering according to estimated ridge block orientation
-            gabor_kernel = cv2.getGaborKernel((block_size, block_size), 1.0, improved_block_orientation, 10.0, 1,
+            gabor_kernel = cv2.getGaborKernel((block_size, block_size), 1, improved_block_orientation, 10.0, 1,
                                               ktype=cv2.CV_32F)
             gabor_filtered_block = cv2.filter2D(image_block, -1, gabor_kernel). \
                 reshape(image_block.shape[0]*image_block.shape[1], )
@@ -350,6 +350,49 @@ def print_fingerprint_lines(img, label_map, labels):
     print_color_image(blank)
 
 
+def count_pixels(img, i, j):
+    height, width = img.shape
+    count = 0
+    for h in range(max(0, i - 1), min(height, i + 2)):
+        for k in range(max(0, j - 1), min(width, j + 2)):
+            if img[h][k] == 1:
+                count = count+1
+    return count
+
+
+def find_ridges(img, label_map, labels):
+    ridges = []
+    for l in range(1, labels + 1):
+        pos = [k for k, v in label_map.items() if v == l]
+        for (i, j) in pos:
+            if count_pixels(img, i, j) == 2:
+                ridges.append((i, j))
+    return ridges
+
+
+def find_bifurcation(img, label_map, labels):
+    bifurcation = []
+    for l in range(1, labels + 1):
+        pos = [k for k, v in label_map.items() if v == l]
+        for (i, j) in pos:
+            if count_pixels(img, i, j) == 4:
+                bifurcation.append((i, j))
+    return bifurcation
+
+
+def print_minutia(img, ridges, b, g, r):
+    height, width = img.shape
+    blank = np.zeros((height, width, 3), np.uint8)
+    for h in range(height):
+        for k in range(width):
+            if img[h][k] == 1:
+                blank[h][k] = (255, 255, 255)
+    for (i, j) in ridges:
+        blank[i][j] = (b, g, r)
+    print_color_image(blank)
+
+
+#TODO IMPROVE PARAMETERS
 def pre_processing(img):
     """
     Preprocessing operations on the image
@@ -357,26 +400,28 @@ def pre_processing(img):
     :return: the processed image
     """
     negated = cv2.bitwise_not(img)
-    equalized = cv2.equalizeHist(negated)
+    denoised = cv2.fastNlMeansDenoising(negated, None, 10)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    equalized = clahe.apply(denoised)
+    #print_images([negated, denoised, equalized])
     gabor_filtered, ridge_map = gabor_filtering(img=equalized, block_size=16,
                                                 precise_orientation_map=True)
-
-    # display vector field
-    ridge_blocks = display_orientation_map(ridge_map)
-    display_image(ridge_blocks, title="Ridge map")
-
     binarized = otsu(gabor_filtered)
     thinned = ridge_thinning(binarized)
     cleaned = clean(thinned)
     enhanced = skeleton_enhancement(cleaned)
+    #print_images([gabor_filtered, binarized, cleaned])
     return enhanced
 
 
 if __name__ == '__main__':
-    fingerprint = load_image(filename="orientation_map_test.jpg", cv2_read_param=0)
-    # display_image(img=fingerprint, cmap="gray", title="Original fingerprint")
+    fingerprint = load_image(filename="test4.jpg", cv2_read_param=0)
+
     processed_img = pre_processing(fingerprint)
 
-    # furrows labeling
-    # label_ridge_map, label_list = find_lines(processed_img)
-    # print_fingerprint_lines(processed_img, label_ridge_map, label_list)
+    # label_map, labels = find_lines(processed_img)
+    # ridges = find_ridges(processed_img, label_map, labels)
+    # bifurcation = find_bifurcation(processed_img, label_map, labels)
+    # print_minutia(processed_img, ridges, 0, 0, 255)
+    # print_minutia(processed_img, bifurcation, 255, 0, 0)
+
