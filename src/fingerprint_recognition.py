@@ -126,8 +126,7 @@ def gabor_filtering(img: np.ndarray, block_size: int = 16,
     :param precise_orientation_map: if True (default) uses a more precise algorithm for ridge direction estimation.
     :return: the filtered image
     """
-    img_height, img_width = img.shape
-    adapted_height, adapted_width = img_height, img_width
+    height, width = img.shape
     filtered_image = np.zeros(img.shape, dtype=img.dtype)
     orientation_map = {}
     phi_map = {}
@@ -140,13 +139,13 @@ def gabor_filtering(img: np.ndarray, block_size: int = 16,
     gx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=sobel_kernel_size)
     gy = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=sobel_kernel_size)
 
-    direction_map = np.zeros(shape=(adapted_height, adapted_width))
+    direction_map = np.zeros(shape=(int(np.ceil(height/block_size)), int(np.ceil(width/block_size))))
 
-    for i in inclusive_range(block_size//2, img_height, block_size):
-        for j in inclusive_range(block_size//2, img_width, block_size):
+    for i in inclusive_range(block_size//2, height, block_size):
+        for j in inclusive_range(block_size//2, width, block_size):
             neighborhood_coordinates, neighborhood_shape = neighbor_coordinates(seed_coordinates=(i, j),
                                                                                 kernel_size=block_size,
-                                                                                height=img_height, width=img_width)
+                                                                                height=height, width=width)
 
             # block direction estimation
             image_block = np.array([img[px[0], px[1]] for px in neighborhood_coordinates]).reshape(neighborhood_shape)
@@ -190,7 +189,7 @@ def gabor_filtering(img: np.ndarray, block_size: int = 16,
 
     # reconvert direction_map to np.array
     for coord, ridge_orientation in improved_orientation_map.items():
-        direction_map[coord[0], coord[1]] = ridge_orientation
+        direction_map[coord[0]//block_size, coord[1]//block_size] = ridge_orientation
     return filtered_image, direction_map
 
 
@@ -229,7 +228,6 @@ def skeleton_enhancement(img):
     return enhanced_skeleton
 
 
-# TODO display block orientation map
 def display_orientation_map(ridge_orientation: np.ndarray, block_size: int = 16) -> np.ndarray:
     """
     Displays the vector field defined by the ridge orientation matrix
@@ -237,15 +235,58 @@ def display_orientation_map(ridge_orientation: np.ndarray, block_size: int = 16)
     :param block_size: the size of each block. By default it is set to 16
     :return:
     """
-    result_shape = (ridge_orientation.shape[0]*block_size, ridge_orientation.shape[0]*block_size)
+    # TODO lerp color
+    block_offset = 0
+    ridges_height, ridges_width = ridge_orientation.shape
+    result_shape = (ridges_height*block_size, ridges_height*block_size)
     result_image = np.zeros(result_shape)
 
     # loop over every element of the ridge orientation map
+    for i in range(ridges_height):
+        for j in range(ridges_width):
+            seed = (i*block_size+block_size//2, j*block_size+block_size//2)  # origin of the block
+            current_orientation = ridge_orientation[i, j]
+            slope = np.tan(current_orientation)
+            intercept = (block_size//2)*(1-slope)
 
-    # convert the current angle to a line slope
+            # compute anchor point based on (0,0) block
+            if abs(slope) > 1:  # the two anchor points will stay on the top and bottom of the window
+                x_top = int(-intercept/(slope+1e-6))
+                x_bottom = int((block_size+intercept)/(slope+1e-6))
 
-    # translate the line according to the block position
-    pass
+                if slope > 0:
+                    affine_anchor_points = [[x_top, 0, 1], [x_bottom, block_size, 1]]
+                else:
+                    affine_anchor_points = [[x_bottom, block_size, 1], [x_top, 0, 1]]
+            elif slope == 0:
+                affine_anchor_points = [[block_size//2, 0, 1], [block_size//2, block_size, 1]]
+            else:  # the two anchor points will stay on the left and right of the window
+                y_left = int(intercept)
+                y_right = int(slope*block_size+intercept)
+
+                if slope > 0:
+                    affine_anchor_points = [[0, y_left, 1], [block_size, y_right, 1]]
+                else:
+                    affine_anchor_points = [[block_size, y_right, 1], [0, y_left, 1]]
+
+            # translate anchor points according to current seed using affine transforms
+            affine_translation_matrix = np.array([[1.0, 0.0, seed[0]-block_size//2],
+                                                  [0.0, 1.0, seed[1]-block_size//2],
+                                                  [0.0, 0.0, 1.0]])
+
+            affine_anchor_start = np.array(affine_anchor_points[0])
+            affine_anchor_end = np.array(affine_anchor_points[1])
+
+            affine_anchor_start_translated = tuple(
+                (np.dot(affine_translation_matrix, affine_anchor_start.transpose()).astype(np.int)))
+            affine_anchor_end_translated = tuple(
+                (np.dot(affine_translation_matrix, affine_anchor_end.transpose()).astype(np.int)))
+
+            cv2.line(result_image, affine_anchor_start_translated[:-1],
+                     affine_anchor_end_translated[:-1],
+                     (255, 255, 255), 1)
+
+    return result_image
 
 
 def find_lines(img):
@@ -319,6 +360,11 @@ def pre_processing(img):
     equalized = cv2.equalizeHist(negated)
     gabor_filtered, ridge_map = gabor_filtering(img=equalized, block_size=16,
                                                 precise_orientation_map=True)
+
+    # display vector field
+    ridge_blocks = display_orientation_map(ridge_map)
+    display_image(ridge_blocks, title="Ridge map")
+
     binarized = otsu(gabor_filtered)
     thinned = ridge_thinning(binarized)
     cleaned = clean(thinned)
@@ -332,5 +378,5 @@ if __name__ == '__main__':
     processed_img = pre_processing(fingerprint)
 
     # furrows labeling
-    label_ridge_map, label_list = find_lines(processed_img)
-    print_fingerprint_lines(processed_img, label_ridge_map, label_list)
+    # label_ridge_map, label_list = find_lines(processed_img)
+    # print_fingerprint_lines(processed_img, label_ridge_map, label_list)

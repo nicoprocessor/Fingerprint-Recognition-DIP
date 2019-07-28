@@ -15,6 +15,22 @@ import matplotlib.pyplot as plt
 
 Pair = Tuple[int, int]
 Scalar = Union[int, float, np.float32]
+Color = Tuple[np.uint8, np.uint8, np.uint8]
+
+
+def lerp_color(start: Color = (0, 0, 0), end: Color = (255, 255, 255),
+               percentage: float = 0.5) -> Color:
+    """
+    Linear color interpolation
+    :param start: the starting color of the gradient. By default set to black.
+    :param end: the final color of the gradient. By default set to white.
+    :param percentage: the gradient percentage, expressed as a value between 0.0 and 1.0. By default it is set to 0.5.
+    :return: the interpolated color
+    """
+    lerp_r = start[0]+(end[0]-start[0])*percentage
+    lerp_g = start[1]+(end[1]-start[1])*percentage
+    lerp_b = start[2]+(end[2]-start[2])*percentage
+    return lerp_r, lerp_g, lerp_b
 
 
 def inclusive_range(start: Scalar, stop: Scalar, step: Scalar = 1):
