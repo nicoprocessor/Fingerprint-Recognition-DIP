@@ -59,7 +59,7 @@ def gabor_filter(image: np.ndarray, orientation_map: np.ndarray, frequency_map: 
     return filtered_img
 
 
-def get_frequency_map(img: np.ndarray, block_size: int = 32) -> np.ndarray:
+def get_frequency_map(img: np.ndarray, block_size: int = 32, improoved_freq: bool = False) -> np.ndarray:
     """
     Estimate the frequency of ridges patterns of each block
     :param img: the original image
@@ -94,8 +94,19 @@ def get_frequency_map(img: np.ndarray, block_size: int = 32) -> np.ndarray:
                         fmax = f
                         umax = u
                         vmax = v
+            if improoved_freq:
+                if np.abs(tmp_shift[umax][vmax - 1]) > np.abs(tmp_shift[umax][vmax + 1]):
+                    new_u = umax - (np.abs(tmp_shift[umax][vmax - 1]) / (np.abs(tmp_shift[umax][vmax - 1]) + np.abs(tmp_shift[umax][vmax])))
+                else:
+                    new_u = umax + (np.abs(tmp_shift[umax][vmax + 1]) / (np.abs(tmp_shift[umax][vmax + 1]) + np.abs(tmp_shift[umax][vmax])))
 
-            fij = np.sqrt((umax-block_size//2)**2+(vmax-block_size//2)**2)/block_size
+                if np.abs(tmp_shift[umax - 1][vmax]) > np.abs(tmp_shift[umax + 1][vmax]):
+                    new_v = vmax - (np.abs(tmp_shift[umax - 1][vmax]) / (np.abs(tmp_shift[umax - 1][vmax]) + np.abs(tmp_shift[umax][vmax])))
+                else:
+                    new_v = vmax + (np.abs(tmp_shift[umax + 1][vmax]) / (np.abs(tmp_shift[umax + 1][vmax]) + np.abs(tmp_shift[umax][vmax])))
+                fij = np.sqrt((new_u-block_size//2)**2+(new_v-block_size//2)**2)/block_size
+            else:
+                fij = np.sqrt((umax - block_size // 2) ** 2 + (vmax - block_size // 2) ** 2) / block_size
             for h in range(i, min(i+block_size, height)):
                 for k in range(j, min(j+block_size, width)):
                     frequency_map[h][k] = fij
