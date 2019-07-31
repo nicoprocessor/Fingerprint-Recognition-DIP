@@ -64,6 +64,7 @@ def get_frequency_map(img: np.ndarray, block_size: int = 32, improoved_freq: boo
     Estimate the frequency of ridges patterns of each block
     :param img: the original image
     :param block_size: the size of the window
+    :param improoved_freq: improove the frequencies estimation
     :return: n image with the same size of the original, where in each cell
     is stored the main frequency  of the ridges that belong to that block
     """
