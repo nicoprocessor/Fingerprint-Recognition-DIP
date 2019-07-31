@@ -148,16 +148,8 @@ def get_orientation_map(image: np.ndarray, block_size: int = 16, sobel_kernel_si
     is stored the orientation of the ridges that belong to that block
     """
     height, width = image.shape
-    # use opencv
-    sobel_x = np.array([[-1, 0, 1],
-                        [-2, 0, 2],
-                        [-1, 0, 1]])
-
-    sobel_y = np.array([[-1, -2, -1],
-                        [0, 0, 0],
-                        [1, 2, 1]])
-    Gx = cv2.filter2D(image, -1, sobel_x)
-    Gy = cv2.filter2D(image, -1, sobel_y)
+    gx = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=sobel_kernel_size)
+    gy = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=sobel_kernel_size)
     i = 0
     j = 0
     orientation = np.zeros(shape=(height, width), dtype=float)
@@ -168,10 +160,11 @@ def get_orientation_map(image: np.ndarray, block_size: int = 16, sobel_kernel_si
             gxx = 0
             for h in range(i, min(i+block_size, height)):
                 for k in range(j, min(j+block_size, width)):
-                    gxy += Gx[h][k]*Gy[h][k]
-                    gxx += Gx[h][k]**2
-                    gyy += Gy[h][k]**2
+                    gxy += gx[h][k]*gy[h][k]
+                    gxx += gx[h][k]**2
+                    gyy += gy[h][k]**2
             val = 0.5*np.arctan2(2*gxy, gxx - gyy)
+            #TODO improve the orientations
             #rij = np.sqrt((gxx-gyy)**2 + 4*(gxy**2))/(gxx+gyy)
             for h in range(i, min(i+block_size, height)):
                 for k in range(j, min(j+block_size, width)):
