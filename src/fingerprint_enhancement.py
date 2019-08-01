@@ -86,7 +86,7 @@ def normalize(image: np.ndarray) -> np.ndarray:
 
 def local_normalize(image: np.ndarray, block_size: int = 32) -> np.ndarray:
     """
-    Boh!
+    Local image normalization
     :param image:
     :param block_size:
     :return:
