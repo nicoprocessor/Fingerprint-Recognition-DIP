@@ -31,23 +31,26 @@ def pre_processing(img: np.ndarray):
     # image enhancement
     negated = cv2.bitwise_not(img)
     denoised = cv2.fastNlMeansDenoising(negated, None, 15)
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    clahe = cv2.createCLAHE(clipLimit=10.0, tileGridSize=(32, 32))
     equalized = clahe.apply(denoised)
+    #normalized = enhancement.normalize2(equalized, 20, 5)
+    normalized = enhancement.normalize(equalized)
 
     # gabor filtering
-    ridge_orientation = gabor.get_orientation_map(enhancement.normalize(equalized))
-    ridge_frequency = gabor.get_frequency_map(enhancement.normalize(equalized))
-    roi = enhancement.roi_mask(enhancement.normalize(equalized))
-    image = gabor.gabor_filter(enhancement.normalize(equalized), ridge_orientation, ridge_frequency,
+    ridge_orientation = gabor.get_orientation_map(normalized)
+    ridge_frequency = gabor.get_frequency_map(normalized)
+    roi = enhancement.roi_mask(normalized)
+    image = gabor.gabor_filter(normalized, ridge_orientation, ridge_frequency,
                                block_size=32, gabor_kernel_size=16)
 
     # extract ROI
     image = np.where(roi == 1.0, image, 1.0)
-    print_images([image, enhancement.ridge_thinning(enhancement.binarization(image))])
+    print_images([denoised, equalized, image])
+    print_images([enhancement.ridge_thinning(enhancement.binarization(image))])
 
 
 if __name__ == '__main__':
-    fingerprint = load_image(filename="test4.jpg", cv2_read_param=0)
+    fingerprint = load_image(filename="test9.jpg", cv2_read_param=0)
 
     pre_processing(fingerprint)
 

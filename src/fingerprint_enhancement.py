@@ -8,7 +8,7 @@ __email__ = "nicola.onofri@gmail.com, " \
 
 import numpy as np
 import cv2
-from skimage.morphology import skeletonize
+from skimage.morphology import thin
 
 
 def otsu(image: np.ndarray, gaussian_blur_size: int = 5) -> np.ndarray:
@@ -29,9 +29,9 @@ def ridge_thinning(image: np.ndarray) -> np.ndarray:
     :param image: the original image
     :return: the skeleton of the image
     """
-    skeleton = skeletonize(image)
-    skeleton = skeleton.astype(np.float)
-    return skeleton
+    thinned = thin(image)
+    thinned = thinned.astype(np.float)
+    return thinned
 
 
 def skeleton_enhancement(image: np.ndarray) -> np.ndarray:
@@ -83,20 +83,35 @@ def normalize(image: np.ndarray) -> np.ndarray:
         image *= 1.0/m
     return image
 
+#
+# def local_normalize(image: np.ndarray, block_size: int = 32) -> np.ndarray:
+#     """
+#     Boh!
+#     :param image:
+#     :param block_size:
+#     :return:
+#     """
+#     image = np.copy(image)
+#     height, width = image.shape
+#     for y in range(0, height, block_size):
+#         for x in range(0, width, block_size):
+#             image[y:y+block_size, x:x+block_size] = normalize(image[y:y+block_size, x:x+block_size])
+#     return image
 
-def local_normalize(image: np.ndarray, block_size: int = 32) -> np.ndarray:
-    """
-    Boh!
-    :param image:
-    :param block_size:
-    :return:
-    """
-    image = np.copy(image)
+
+#TODO find good values for m0 and v0
+def normalize2(image: np.ndarray, m0: int, v0: int) -> np.ndarray:
+    new = np.zeros(image.shape, dtype=image.dtype)
     height, width = image.shape
-    for y in range(0, height, block_size):
-        for x in range(0, width, block_size):
-            image[y:y+block_size, x:x+block_size] = normalize(image[y:y+block_size, x:x+block_size])
-    return image
+    mean = np.mean(image)
+    var = np.var(image)
+    for i in range(height):
+        for j in range(width):
+            if image[i][j] > mean:
+                new[i][j] = m0 + np.sqrt(((image[i][j] - mean)**2)*v0/var)
+            else:
+                new[i][j] = m0 - np.sqrt(((image[i][j] - mean)**2)*v0/var)
+    return new
 
 
 def roi_mask(image: np.ndarray, threshold: float = 0.1, block_size: int = 32) -> np.ndarray:
@@ -126,7 +141,7 @@ def roi_mask(image: np.ndarray, threshold: float = 0.1, block_size: int = 32) ->
     return mask
 
 
-def binarization(img: np.ndarray, block_size: int = 32, mean_threshold_factor: float = 1.5) -> np.ndarray:
+def binarization(img: np.ndarray, block_size: int = 32, mean_threshold_factor: float = 1.2) -> np.ndarray:
     """
     Image binarization using local block analysis
     :param img: the original image
