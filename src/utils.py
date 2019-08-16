@@ -13,7 +13,7 @@ from pathlib import PurePath
 from typing import Tuple, List, Union
 import matplotlib.pyplot as plt
 
-Pair = Tuple[int, int]
+Vector = Tuple[int, int]
 Scalar = Union[int, float, np.float32]
 Color = Tuple[np.uint8, np.uint8, np.uint8]
 
@@ -49,6 +49,50 @@ def inclusive_range(start: Scalar, stop: Scalar, step: Scalar = 1):
         current += step
 
 
+def rotate_vector(vec: np.ndarray, theta: float) -> np.ndarray:
+    """
+    Rotate a vector anticlockwise direction, using affine transformations
+    :param vec: the vector to be rotated
+    :param theta: the rotation angle in radians
+    :return: the rotated vector
+    """
+    c, s = np.cos(theta), np.sin(theta)
+    affine_rotation_matrix = np.array([[c, -s, 0.0],
+                                       [s, c, 0.0],
+                                       [0.0, 0.0, 1.0]])
+    affine_vec = np.append(vec, 1.0)
+    dst = np.dot(affine_rotation_matrix, affine_vec)
+    return dst[:-1]
+
+
+def translate_vector(vec: np.ndarray, translation_vector: np.ndarray) -> np.ndarray:
+    """
+    Translate a vector using affine transformations
+    :param vec: the vector to be translated
+    :param translation_vector: the translation vector
+    :return: the translated vector
+    """
+    affine_translation_matrix = np.array([[1.0, 0.0, translation_vector[0]],
+                                          [0.0, 1.0, translation_vector[1]],
+                                          [0.0, 0.0, 1.0]])
+
+    affine_vec = np.append(vec, 1.0)
+    dst = np.dot(affine_translation_matrix, affine_vec)
+    return dst[:-1]
+
+
+def symmetrical_wrt_center_point(symmetry_origin: np.ndarray, point: np.ndarray) -> np.ndarray:
+    """
+    Calculate the symmetric of a point with respect to the symmetry origin.
+    :param symmetry_origin: the center of the symmetry
+    :param point: the point to be reflected
+    :return: the symmetrical point
+    """
+    assert (symmetry_origin.shape == point.shape), "Shapes don't match"
+    dst = 2*symmetry_origin-point
+    return dst
+
+
 def check_membership_in_sorted_set_and_pop(element: Scalar, sorted_list: List[Scalar]) -> Tuple[bool, List[Scalar]]:
     """
     Check if an element is in the sorted list without looping on the entire list.
@@ -73,8 +117,8 @@ def check_membership_in_sorted_set_and_pop(element: Scalar, sorted_list: List[Sc
             sorted_list = sorted_list[1:]  # pop head
 
 
-def neighbor_coordinates(seed_coordinates: Pair, kernel_size: int, height: int, width: int,
-                         allow_diagonals: bool = True, include_seed=True) -> Tuple[List[Pair], Pair]:
+def neighbor_coordinates(seed_coordinates: Vector, kernel_size: int, height: int, width: int,
+                         allow_diagonals: bool = True, include_seed=True) -> Tuple[List[Vector], Vector]:
     """
     Compute the list of the coordinates of the neighbors, given the coordinates of the center, in a 2D matrix
     :param seed_coordinates: the coordinates of the central element
