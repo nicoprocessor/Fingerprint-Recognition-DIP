@@ -14,7 +14,7 @@ import scipy.ndimage as ndimage
 import scipy.signal as signal
 from typing import Tuple, Union
 
-from utils import neighbor_coordinates, inclusive_range
+from utils import neighbor_coordinates, inclusive_range, display_image
 
 
 def gabor_filter(image: np.ndarray, orientation_map: np.ndarray, frequency_map: np.ndarray,
@@ -59,16 +59,15 @@ def gabor_filter(image: np.ndarray, orientation_map: np.ndarray, frequency_map: 
     return filtered_img
 
 
-def get_frequency_map(img: np.ndarray, block_size: int = 32, improoved_freq: bool = False) -> np.ndarray:
+def get_frequency_map(img: np.ndarray, block_size: int = 32, improved_freq: bool = False) -> np.ndarray:
     """
     Estimate the frequency of ridges patterns of each block
     :param img: the original image
     :param block_size: the size of the window
-    :param improoved_freq: improove the frequencies estimation
+    :param improved_freq: improve the frequencies estimation
     :return: n image with the same size of the original, where in each cell
     is stored the main frequency  of the ridges that belong to that block
     """
-    # TODO THIS IS THE ONE AND ONLY!!!
     # TODO convert while loops to for loops
     frequency_map = np.empty(img.shape)
     height, width = img.shape
@@ -95,19 +94,23 @@ def get_frequency_map(img: np.ndarray, block_size: int = 32, improoved_freq: boo
                         fmax = f
                         umax = u
                         vmax = v
-            if improoved_freq:
-                if np.abs(tmp_shift[umax][vmax - 1]) > np.abs(tmp_shift[umax][vmax + 1]):
-                    new_u = umax - (np.abs(tmp_shift[umax][vmax - 1]) / (np.abs(tmp_shift[umax][vmax - 1]) + np.abs(tmp_shift[umax][vmax])))
+            if improved_freq:
+                if np.abs(tmp_shift[umax][vmax-1]) > np.abs(tmp_shift[umax][vmax+1]):
+                    new_u = umax-(np.abs(tmp_shift[umax][vmax-1])/(
+                            np.abs(tmp_shift[umax][vmax-1])+np.abs(tmp_shift[umax][vmax])))
                 else:
-                    new_u = umax + (np.abs(tmp_shift[umax][vmax + 1]) / (np.abs(tmp_shift[umax][vmax + 1]) + np.abs(tmp_shift[umax][vmax])))
+                    new_u = umax+(np.abs(tmp_shift[umax][vmax+1])/(
+                            np.abs(tmp_shift[umax][vmax+1])+np.abs(tmp_shift[umax][vmax])))
 
-                if np.abs(tmp_shift[umax - 1][vmax]) > np.abs(tmp_shift[umax + 1][vmax]):
-                    new_v = vmax - (np.abs(tmp_shift[umax - 1][vmax]) / (np.abs(tmp_shift[umax - 1][vmax]) + np.abs(tmp_shift[umax][vmax])))
+                if np.abs(tmp_shift[umax-1][vmax]) > np.abs(tmp_shift[umax+1][vmax]):
+                    new_v = vmax-(np.abs(tmp_shift[umax-1][vmax])/(
+                            np.abs(tmp_shift[umax-1][vmax])+np.abs(tmp_shift[umax][vmax])))
                 else:
-                    new_v = vmax + (np.abs(tmp_shift[umax + 1][vmax]) / (np.abs(tmp_shift[umax + 1][vmax]) + np.abs(tmp_shift[umax][vmax])))
+                    new_v = vmax+(np.abs(tmp_shift[umax+1][vmax])/(
+                            np.abs(tmp_shift[umax+1][vmax])+np.abs(tmp_shift[umax][vmax])))
                 fij = np.sqrt((new_u-block_size//2)**2+(new_v-block_size//2)**2)/block_size
             else:
-                fij = np.sqrt((umax - block_size // 2) ** 2 + (vmax - block_size // 2) ** 2) / block_size
+                fij = np.sqrt((umax-block_size//2)**2+(vmax-block_size//2)**2)/block_size
             for h in range(i, min(i+block_size, height)):
                 for k in range(j, min(j+block_size, width)):
                     frequency_map[h][k] = fij
@@ -164,26 +167,32 @@ def get_orientation_map(image: np.ndarray, block_size: int = 16, sobel_kernel_si
     gy = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=sobel_kernel_size)
     i = 0
     j = 0
+    orientation_coherence = np.zeros(shape=(height, width), dtype=float)
     orientation = np.zeros(shape=(height, width), dtype=float)
     while i < height:
         while j < width:
-            gxy = 0
-            gyy = 0
-            gxx = 0
+            gxy, gyy, gxx = 0, 0, 0
             for h in range(i, min(i+block_size, height)):
                 for k in range(j, min(j+block_size, width)):
                     gxy += gx[h][k]*gy[h][k]
                     gxx += gx[h][k]**2
                     gyy += gy[h][k]**2
-            val = 0.5*np.arctan2(2*gxy, gxx - gyy)
-            #TODO improve the orientations
-            #rij = np.sqrt((gxx-gyy)**2 + 4*(gxy**2))/(gxx+gyy)
+            # TODO improve the orientations
+            # theta = np.pi*0.5+0.5*np.arctan2(2*gxy, gxx-gyy)
+            theta = 0.5*np.arctan2(2*gxy, gxx-gyy)
+            coherence = np.sqrt((gxx-gyy)**2+4*(gxy**2))/(gxx+gyy)
+
             for h in range(i, min(i+block_size, height)):
                 for k in range(j, min(j+block_size, width)):
-                    orientation[h][k] = val
+                    orientation_coherence[h, k] = coherence
+                    orientation[h, k] = theta
             j += block_size
         i += block_size
         j = 0
+
+    # print ridge orientation
+    display_orientation_map(ridge_orientation=orientation, coherence_map=orientation_coherence, block_size=block_size)
+
     return orientation
 
 
@@ -195,19 +204,19 @@ def get_gabor_kernel(kernel_size: int, orientation: float, frequency: float) -> 
     :param frequency: the frequency of the modulating sine wave
     :return: the Gabor kernel
     """
-
-    x_sigma = 4
-    y_sigma = 4
+    x_sigma = 3
+    y_sigma = 3
 
     kernel = np.empty((kernel_size, kernel_size))
     for i in range(0, kernel_size):
         for j in range(0, kernel_size):
             x = i-kernel_size//2
             y = j-kernel_size//2
-            theta = np.pi/2 - orientation
+            theta = np.pi/2-orientation
             x_theta = x*np.cos(theta)+y*np.sin(theta)
             y_theta = -x*np.sin(theta)+y*np.cos(theta)
-            kernel[i, j] = np.exp(-((x_theta**2)/(x_sigma**2)+(y_theta**2)/(y_sigma**2))/2)*np.cos(2*np.pi*frequency*x_theta)
+            kernel[i, j] = np.exp(-((x_theta**2)/(x_sigma**2)+(y_theta**2)/(y_sigma**2))/2)*np.cos(
+                2*np.pi*frequency*x_theta)
     return kernel
 
 
@@ -246,27 +255,49 @@ def rotate_crop(image, angle):
     return image[y:y+hr, x:x+wr]
 
 
-def display_orientation_map(ridge_orientation: np.ndarray, block_size: int = 16) -> np.ndarray:
+def angle_regularization(ridge_orientation: np.ndarray, coherence_map: np.ndarray) -> np.ndarray:
+    """
+    Perform angle regularization on the ridge orientation map
+    :param ridge_orientation: the ridges orientations
+    :param coherence_map: the map containing orientation coherence
+    :return: the regularized map
+    """
+    height, width = ridge_orientation.shape
+    regularized_map = np.zeros(ridge_orientation.shape, dtype=ridge_orientation.dtype)
+
+    for i in range(height):
+        for j in range(width):
+            regularized_direction = np.array([coherence_map[i, j]*np.cos(2*ridge_orientation[i, j]),
+                                              coherence_map[i, j]*np.sin(2*ridge_orientation[i, j])])
+            regularized_map[i, j] = regularized_direction
+    return regularized_map
+
+
+def display_orientation_map(ridge_orientation: np.ndarray, coherence_map: np.ndarray,
+                            block_size: int = 16) -> np.ndarray:
     """
     Displays the vector field defined by the ridge orientation matrix
     :param ridge_orientation: the ridge orientation matrix
+    :param coherence_map: the map containing orientation coherence
     :param block_size: the size of each block. By default it is set to 16
     :return:
     """
     # TODO lerp color
     block_offset = 0
     ridges_height, ridges_width = ridge_orientation.shape
-    result_shape = (ridges_height*block_size, ridges_height*block_size)
-    result_image = np.zeros(result_shape)
+    result_image = np.zeros(ridge_orientation.shape)
 
-    # loop over every element of the ridge orientation map
-    for i in range(ridges_height):
-        for j in range(ridges_width):
-            seed = (i*block_size+block_size//2, j*block_size+block_size//2)  # origin of the block
+    for i in inclusive_range(block_size//2, ridges_height-block_size//2, block_size):
+        for j in inclusive_range(block_size//2, ridges_width-block_size//2, block_size):
+
+            seed = (i, j)  # origin of the block
+            current_orientation = ridge_orientation[i, j]
+
             current_orientation = ridge_orientation[i, j]
             slope = np.tan(current_orientation)
             intercept = (block_size//2)*(1-slope)
 
+            # TODO fix this
             # compute anchor point based on (0,0) block
             if abs(slope) > 1:  # the two anchor points will stay on the top and bottom of the window
                 x_top = int(-intercept/(slope+1e-6))
@@ -303,8 +334,6 @@ def display_orientation_map(ridge_orientation: np.ndarray, block_size: int = 16)
             cv2.line(result_image, affine_anchor_start_translated[:-1], affine_anchor_end_translated[:-1],
                      (255, 255, 255), 1)
     return result_image
-
-
 # def fail_gabor_filtering(img: np.ndarray, block_size: int = 16,
 #                          gabor_kernel_size: Union[int, None] = None,
 #                          lpf_size: int = 5, sobel_kernel_size: int = 5,

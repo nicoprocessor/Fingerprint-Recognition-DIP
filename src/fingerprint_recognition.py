@@ -17,6 +17,7 @@ from utils import neighbor_coordinates
 from utils import inclusive_range
 from utils import print_images
 from utils import print_color_image
+import matplotlib.pyplot as plt
 
 import gabor_filtering as gabor
 import fingerprint_enhancement as enhancement
@@ -46,11 +47,12 @@ def pre_processing(img: np.ndarray):
     # extract ROI
     image = np.where(roi == 1.0, image, 1.0)
     print_images([denoised, equalized, image])
-    print_images([enhancement.ridge_thinning(enhancement.binarization(image))])
+    print_images([enhancement.clean(enhancement.ridge_thinning(enhancement.binarization(image)))])
+
 
 
 if __name__ == '__main__':
-    fingerprint = load_image(filename="test9.jpg", cv2_read_param=0)
+    fingerprint = load_image(filename="test4.jpg", cv2_read_param=0)
 
     pre_processing(fingerprint)
 
