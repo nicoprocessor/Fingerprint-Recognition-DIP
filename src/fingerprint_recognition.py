@@ -11,7 +11,7 @@ import cv2
 
 from minutiae import find_lines, find_terminations, find_bifurcations, false_minutiae_removal
 from utils import load_image
-from utils import neighbor_coordinates
+from utils import get_neighbor_coordinates
 from utils import print_images
 from utils import print_color_image
 from typing import Tuple, Union
@@ -51,13 +51,14 @@ def pre_processing(img: np.ndarray):
 if __name__ == '__main__':
     fingerprint = load_image(filename="test4.jpg", cv2_read_param=0)
     processed_img = pre_processing(fingerprint)
-    label_map, labels = find_lines(processed_img)
+    ridge_identification_map, labels = find_lines(processed_img)
 
-    terminations = find_terminations(processed_img, label_map, labels)
-    bifurcation = find_bifurcations(processed_img, label_map, labels)
-    real_bifurcations, real_terminations = false_minutiae_removal(skeleton=processed_image,
-                                                                  termination_map=terminations,
-                                                                  bifurcation_map=bifurcations)
+    terminations = find_terminations(processed_img, ridge_identification_map, labels)
+    bifurcations = find_bifurcations(processed_img, ridge_identification_map, labels)
+    real_bifurcations, real_terminations = false_minutiae_removal(skeleton=processed_img,
+                                                                  ridge_map=ridge_identification_map,
+                                                                  terminations=terminations,
+                                                                  bifurcations=bifurcations)
 
     # print_minutia(processed_img, ridges, 0, 0, 255)
     # print_minutia(processed_img, bifurcation, 255, 0, 0)
