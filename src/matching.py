@@ -14,9 +14,9 @@ from utils import print_color_image
 
 def alignment(skel1, I1, skel2, I2):
     n = 10
-    L = 5 #use inter ridge length
-    minutia1 = I1[39] # for testing
-    #minutia2 = I2[39]
+    L = 5  # use inter ridge length
+    minutia1 = I1[39]  # for testing
+    # minutia2 = I2[39]
     sample(skel1, minutia1, L, n)
 
 
@@ -32,8 +32,8 @@ def sample(skel, minutia, L, n):
         sample_r(skel, height, width, samples, processed, i, j, L, n-1, L)
         minutiae.print_minutiae(skel, samples, 0, 0, 255)
     if minutiae.count_pixels(skel, i, j) == 4:
-        for h in range(max(0, i - 1), min(height, i + 2)):
-            for k in range(max(0, j - 1), min(width, j + 2)):
+        for h in range(max(0, i-1), min(height, i+2)):
+            for k in range(max(0, j-1), min(width, j+2)):
                 if skel[h][k] == 1:
                     sample_r(skel, height, width, samples, processed, i, j, L, n//3, L)
         minutiae.print_minutiae(skel, samples, 255, 0, 0)
@@ -41,8 +41,8 @@ def sample(skel, minutia, L, n):
 
 def sample_r(skel, height, width, samples, processed, i, j, L, n, L_reset):
     if n > 0:
-        for h in range(max(0, i - 1), min(height, i + 2)):
-            for k in range(max(0, j - 1), min(width, j + 2)):
+        for h in range(max(0, i-1), min(height, i+2)):
+            for k in range(max(0, j-1), min(width, j+2)):
                 if skel[h][k] == 1:
                     if (h, k) not in processed:
                         if L == 0:
@@ -52,6 +52,7 @@ def sample_r(skel, height, width, samples, processed, i, j, L, n, L_reset):
                         else:
                             processed.append((h, k))
                             sample_r(skel, height, width, samples, processed, h, k, L-1, n, L_reset)
+
 
 # not tested
 def similarity(samples1, samples2):

@@ -85,7 +85,6 @@ def count_pixels(image: np.ndarray, i: int, j: int, block_size: int = 3) -> int:
     :param block_size: the size of the window
     :return: the sum of non-zero pixels in the neighborhood
     """
-    # TODO numpy?
     height, width = image.shape
     count = 0
 
@@ -164,21 +163,24 @@ def inter_ridge_length(skeleton: np.ndarray) -> float:
 def false_minutiae_removal(skeleton: np.ndarray,
                            ridge_map: Dict[Coordinate, int],
                            bifurcations: np.ndarray,
-                           terminations: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+                           terminations: np.ndarray,
+                           orientation_map: np.ndarray,
+                           orientation_angle_threshold: float = np.pi/3) -> Tuple[np.ndarray, np.ndarray]:
     """
     Remove false minutiae from the fingerprint skeleton
     :param skeleton: the fingerprint skeleton
     :param ridge_map: the ridge map that binds each pixel in a ridge with the corresponding ridge identifier
     :param bifurcations: the coordinates of every ridge bifurcation in the skeleton
     :param terminations: the coordinates of every ridge termination in the skeleton
+    :param orientation_map: the matrix containing the direction of each ridge
     :return: the bifurcations and terminations coordinates, without false records
     """
     height, width = skeleton.shape
     false_minutiae_threshold = inter_ridge_length(skeleton)
-    print("False minutiae threshold: "+str(false_minutiae_threshold))  # very low
+    print("False minutiae threshold: "+str(false_minutiae_threshold))  # very low value! Find a better solution
 
     false_bifurcations, false_terminations = [], []
-    real_bifurcations, real_terminations = [], []
+    # real_bifurcations, real_terminations = [], []
 
     # convert minutiae matrices from sparse to full format
     bifurcations_rows = [x[0] for x in bifurcations]
@@ -191,9 +193,27 @@ def false_minutiae_removal(skeleton: np.ndarray,
     terminations_image = sparse.coo_matrix((np.ones(len(terminations)), (terminations_rows, terminations_cols)),
                                            shape=skeleton.shape).toarray()
 
-    inverse_ridge_map = inverse_dictionary(original_dict=ridge_map, unique_values=False)  # Dict[int, List[Coordinate]]
+    # leave for future use
+    # inverse_ridge_map = inverse_dictionary(original_dict=ridge_map, unique_values=False)  # Dict[int, List[Coordinate]]
 
-    # b: Coordinate
+    false_bifurcation_removal(bifurcations=bifurcations, bifurcation_image=bifurcation_image, ridge_map=ridge_map)
+    return false_bifurcations, false_terminations
+
+
+def false_bifurcation_removal(height: int, weight: int,
+                              bifurcations: List[Coordinate],
+                              bifurcation_image: np.ndarray,
+                              ridge_map: Dict[Coordinate, int]):
+    """
+    Remove false bifurcations in the fingerprint skeleton
+    :param height: skeleton height
+    :param weight: skeleton weight
+    :param bifurcations: the list of bifurcation coordinates
+    :param bifurcation_image: the image containing "1" where a bifurcation is located
+    :param ridge_map: a dictionary mapping each pixel of a ridge to its unique identifier
+    :return: the bifurcations coordinates, the bifurcation image and the list of false bifurcations
+    """
+    # current_bifurcation: Coordinate
     for current_bifurcation in bifurcations:
         # find other minutiae in the neighborhood -> no need to check distance
         neighbor_coordinates, _ = get_neighbor_coordinates(seed_coordinates=current_bifurcation,
@@ -226,6 +246,8 @@ def false_minutiae_removal(skeleton: np.ndarray,
 
                     false_bifurcations.append(current_bifurcation)
                     false_terminations.append(neighbor)
+    return bifucations, false_bifurcations, bifurcation_image
 
-            # TODO check for other 2 false minutiae criteria
-    return false_bifurcations, false_terminations
+
+def false_terminations_removal():
+    pass

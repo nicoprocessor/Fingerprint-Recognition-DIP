@@ -119,39 +119,6 @@ def get_frequency_map(img: np.ndarray, block_size: int = 32, improved_freq: bool
     return frequency_map
 
 
-# def get_orientation_map(img, w=16):
-#     height, width = img.shape
-#     sobel_x = np.array([[-1, 0, 1],
-#                         [-2, 0, 2],
-#                         [-1, 0, 1]])
-#
-#     sobel_y = np.array([[-1, -2, -1],
-#                         [0, 0, 0],
-#                         [1, 2, 1]])
-#     Gx = cv2.filter2D(img, -1, sobel_x)
-#     Gy = cv2.filter2D(img, -1, sobel_y)
-#     i = 0
-#     j = 0
-#     orientation = np.zeros((height, width), dtype=float)
-#     while i < height:
-#         while j < width:
-#             vx = 0
-#             vy = 0
-#             for h in range(i, min(i+w, height)):
-#                 for k in range(j, min(j+w, width)):
-#                     vx += 2*Gx[h][k]*Gy[h][k]
-#                     vy += (Gx[h][k]**2-Gy[h][k]**2)
-#
-#             val = 0.5*np.arctan2(vy, vx)
-#             for h in range(i, min(i+w, height)):
-#                 for k in range(j, min(j+w, width)):
-#                     orientation[h][k] = val
-#             j += w
-#         i += w
-#         j = 0
-#     return orientation
-
-
 def get_orientation_map(image: np.ndarray, block_size: int = 16, sobel_kernel_size: int = 3) -> np.ndarray:
     """
     Estimate the orientation of the ridges in each block

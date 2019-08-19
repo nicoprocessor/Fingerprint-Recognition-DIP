@@ -45,12 +45,12 @@ def pre_processing(img: np.ndarray):
     binarized = enhancement.binarization(image)
     thinned = enhancement.ridge_thinning(binarized)
     # print_images([image, enhancement.ridge_thinning(enhancement.binarization(image))])
-    return thinned
+    return thinned, ridge_orientation
 
 
 if __name__ == '__main__':
     fingerprint = load_image(filename="test4.jpg", cv2_read_param=0)
-    processed_img = pre_processing(fingerprint)
+    processed_img, ridge_orientation_map = pre_processing(fingerprint)
     ridge_identification_map, labels = find_lines(processed_img)
 
     terminations = find_terminations(processed_img, ridge_identification_map, labels)
@@ -58,7 +58,8 @@ if __name__ == '__main__':
     real_bifurcations, real_terminations = false_minutiae_removal(skeleton=processed_img,
                                                                   ridge_map=ridge_identification_map,
                                                                   terminations=terminations,
-                                                                  bifurcations=bifurcations)
+                                                                  bifurcations=bifurcations,
+                                                                  orientation_map=ridge_orientation_map)
 
     # print_minutia(processed_img, ridges, 0, 0, 255)
     # print_minutia(processed_img, bifurcation, 255, 0, 0)
