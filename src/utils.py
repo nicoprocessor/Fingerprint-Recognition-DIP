@@ -10,10 +10,10 @@ import cv2
 import numpy as np
 from pathlib import Path
 from pathlib import PurePath
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Dict, Any
 import matplotlib.pyplot as plt
 
-Vector = Tuple[int, int]
+Coordinate = Tuple[int, int]
 Scalar = Union[int, float, np.float32]
 Color = Tuple[np.uint8, np.uint8, np.uint8]
 
@@ -93,6 +93,24 @@ def symmetrical_wrt_center_point(symmetry_origin: np.ndarray, point: np.ndarray)
     return dst
 
 
+def inverse_dictionary(original_dict: Dict[Any], unique_values: bool = False) -> Dict[Any]:
+    """Swap keys and values in the dictionary
+    :param original_dict: the dictionary that will be inverted
+    :param unique_values: true if the values in the original dictionary are unique.
+    If false, the inverse dictionary will contain the list of original keys that were mapped to the same value, i.e:
+    original_dict = {'a':1, 'b':1, 'c':2} -> inverse_dict = {1:['a','b'], 2:['c']}"""
+    inverse_dict = {}
+
+    if unique_values:
+        for k, v in original_dict.items():
+            inverse_dict[v] = original_dict.get(v, [])
+            inverse_dict[v].append(k)
+    else:
+        for k, v in original_dict.items():
+            inverse_dict[v] = k
+    return inverse_dict
+
+
 def check_membership_in_sorted_set_and_pop(element: Scalar, sorted_list: List[Scalar]) -> Tuple[bool, List[Scalar]]:
     """
     Check if an element is in the sorted list without looping on the entire list.
@@ -117,8 +135,8 @@ def check_membership_in_sorted_set_and_pop(element: Scalar, sorted_list: List[Sc
             sorted_list = sorted_list[1:]  # pop head
 
 
-def neighbor_coordinates(seed_coordinates: Vector, kernel_size: int, height: int, width: int,
-                         allow_diagonals: bool = True, include_seed=True) -> Tuple[List[Vector], Vector]:
+def get_neighbor_coordinates(seed_coordinates: Coordinate, kernel_size: int, height: int, width: int,
+                             allow_diagonals: bool = True, include_seed=True) -> Tuple[List[Coordinate], Coordinate]:
     """
     Compute the list of the coordinates of the neighbors, given the coordinates of the center, in a 2D matrix
     :param seed_coordinates: the coordinates of the central element

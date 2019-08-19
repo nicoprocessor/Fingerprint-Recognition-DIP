@@ -7,12 +7,12 @@ __email__ = "nicola.onofri@gmail.com, " \
             "l.bonassi005@studenti.unibs.it"
 
 import numpy as np
+import scipy.sparse as sparse
 
-from utils import print_images
-from typing import Tuple, Dict
-from utils import print_color_image
-from utils import neighbor_coordinates
-from utils import Vector
+from utils import get_neighbor_coordinates, inverse_dictionary, print_color_image, print_images
+from utils import Coordinate
+
+from typing import Tuple, Dict, List
 
 
 def find_lines(skeleton: np.ndarray):
@@ -44,8 +44,8 @@ def label_line(skeleton: np.ndarray, i: int, j: int, label_map, label, height: i
     :param height: the height of the image
     :param width: the width of the image
     """
-    for h in range(max(0, i - 1), min(height, i + 2)):
-        for k in range(max(0, j - 1), min(width, j + 2)):
+    for h in range(max(0, i-1), min(height, i+2)):
+        for k in range(max(0, j-1), min(width, j+2)):
             if skeleton[h][k] == 1 and (h, k) not in label_map:
                 label_map[(h, k)] = label
                 # recursive call
@@ -63,13 +63,14 @@ def print_fingerprint_lines(image: np.ndarray, label_map, labels: int):
     blank = np.zeros((height, width, 3), np.uint8)
     current, b, g, r = 0, 0, 0, 0
 
-    for l in range(1, labels + 1):
-        pos = [k for k, v in label_map.items() if v == l]
+    for l in range(1, labels+1):
+        pos = [k for k, v in label_map.items() if v == l]  # extract pixel coordinates that share the same label
         if current != l:
             current = l
             r = np.random.randint(50, 255)
             g = np.random.randint(50, 255)
             b = np.random.randint(50, 255)
+        # assign to each pixel in the same ridge the selected random color
         for (i, j) in pos:
             blank[i][j] = (b, g, r)
     print_color_image(blank)
@@ -93,14 +94,14 @@ def count_pixels(image: np.ndarray, i: int, j: int, block_size: int = 3) -> int:
     #                                                   height=height, width=width)
     # return np.sum(np.array([gy[px[0], px[1]] for px in neighborhood_coordinates]))
 
-    for h in range(max(0, i - 1), min(height, i + 2)):
-        for k in range(max(0, j - 1), min(width, j + 2)):
+    for h in range(max(0, i-1), min(height, i+2)):
+        for k in range(max(0, j-1), min(width, j+2)):
             if image[h][k] == 1:
-                count = count + 1
+                count = count+1
     return count
 
 
-def find_terminations(skeleton: np.ndarray, label_map, labels: int) -> Vector:
+def find_terminations(skeleton: np.ndarray, label_map, labels: int) -> Coordinate:
     """
     Find ridge termination in the fingerprint image
     :param skeleton: the fingerprint skeleton
@@ -109,7 +110,7 @@ def find_terminations(skeleton: np.ndarray, label_map, labels: int) -> Vector:
     :return:
     """
     terminations = []
-    for l in range(1, labels + 1):
+    for l in range(1, labels+1):
         pos = [k for k, v in label_map.items() if v == l]
         for (i, j) in pos:
             if count_pixels(skeleton, i, j) == 2:
@@ -117,7 +118,7 @@ def find_terminations(skeleton: np.ndarray, label_map, labels: int) -> Vector:
     return terminations
 
 
-def find_bifurcations(skeleton: np.ndarray, label_map, labels: int) -> Vector:
+def find_bifurcations(skeleton: np.ndarray, label_map, labels: int) -> Coordinate:
     """
     Find bifurcations in the fingerprint image
     :param skeleton: the fingerprint skeleton
@@ -126,7 +127,7 @@ def find_bifurcations(skeleton: np.ndarray, label_map, labels: int) -> Vector:
     :return:
     """
     bifurcations = []
-    for l in range(1, labels + 1):
+    for l in range(1, labels+1):
         pos = [k for k, v in label_map.items() if v == l]
         for (i, j) in pos:
             if count_pixels(skeleton, i, j) == 4:
@@ -157,32 +158,74 @@ def print_minutiae(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
 
 def inter_ridge_length(skeleton: np.ndarray) -> float:
     inter_ridge_distance = np.mean(skeleton, axis=1)  # average of all the pixels along rows
-    false_minutiae_threshold = np.mean(inter_ridge_distance)
+    return np.mean(inter_ridge_distance)
 
 
 def false_minutiae_removal(skeleton: np.ndarray,
-                           bifurcation_map: np.ndarray,
-                           termination_map: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+                           ridge_map: Dict[Coordinate, int],
+                           bifurcations: np.ndarray,
+                           terminations: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Remove false minutiae from the fingerprint skeleton
     :param skeleton: the fingerprint skeleton
-    :param bifurcation_map: the coordinates of each ridge bifurcation
-    :param termination_map: the coordinates of every ridge termination
-    :return: the bifurcations and terminations coordinates, without false recordings
+    :param ridge_map: the ridge map that binds each pixel in a ridge with the corresponding ridge identifier
+    :param bifurcations: the coordinates of every ridge bifurcation in the skeleton
+    :param terminations: the coordinates of every ridge termination in the skeleton
+    :return: the bifurcations and terminations coordinates, without false records
     """
     height, width = skeleton.shape
     false_minutiae_threshold = inter_ridge_length(skeleton)
-    bifurcation_image = np.zeros(shape=skeleton.shape, dtype=int)
-    termination_image = np.zeros(shape=skeleton.shape, dtype=int)
+    print("False minutiae threshold: "+str(false_minutiae_threshold))  # very low
 
-    for b in bifurcation_map:
-        bifurcation_image[b[0], b[1]] = 1
+    false_bifurcations, false_terminations = [], []
+    real_bifurcations, real_terminations = [], []
 
-    for t in termination_map:
-        termination_image[t[0], t[1]] = 1
+    # convert minutiae matrices from sparse to full format
+    bifurcations_rows = [x[0] for x in bifurcations]
+    bifurcations_cols = [x[1] for x in bifurcations]
+    bifurcation_image = sparse.coo_matrix((np.ones(len(bifurcations)), (bifurcations_rows, bifurcations_cols)),
+                                          shape=skeleton.shape).toarray()
 
-    for h in range(height):
-        for k in range(width):
-            if bifurcation_image[h,k] == 1:
-                 pass
-    pass
+    terminations_rows = [x[0] for x in terminations]
+    terminations_cols = [x[1] for x in terminations]
+    terminations_image = sparse.coo_matrix((np.ones(len(terminations)), (terminations_rows, terminations_cols)),
+                                           shape=skeleton.shape).toarray()
+
+    inverse_ridge_map = inverse_dictionary(original_dict=ridge_map, unique_values=False)  # Dict[int, List[Coordinate]]
+
+    # b: Coordinate
+    for current_bifurcation in bifurcations:
+        # find other minutiae in the neighborhood -> no need to check distance
+        neighbor_coordinates, _ = get_neighbor_coordinates(seed_coordinates=current_bifurcation,
+                                                           kernel_size=np.floor(false_minutiae_threshold),
+                                                           width=width, height=height, include_seed=False)
+        # neighbor: Coordinate
+        for neighbor in neighbor_coordinates:
+            if bifurcation_image(neighbor[0], neighbor[1]) == 1:  # found another bifurcation in the neighborhood
+                if ridge_map[neighbor] == ridge_map[current_bifurcation]:  # both minutiae belong to the same ridge
+                    # remove both of them from the original list
+                    bifurcations.remove(current_bifurcation)
+                    bifurcations.remove(neighbor)
+
+                    # update matrices
+                    bifurcation_image[current_bifurcation[0], current_bifurcation[1]] = 0
+                    bifurcation_image[neighbor[0], neighbor[1]] = 0
+
+                    false_bifurcations.append(current_bifurcation)
+                    false_bifurcations.append(neighbor)
+
+            elif terminations_image(neighbor[0], neighbor[1]) == 1:  # found a termination in the neighborhood
+                if ridge_map[neighbor] == ridge_map[current_bifurcation]:  # both minutiae belong to the same ridge
+                    # remove both of them from the original list
+                    bifurcations.remove(current_bifurcation)
+                    terminations.remove(neighbor)
+
+                    # update matrices
+                    bifurcation_image[current_bifurcation[0], current_bifurcation[1]] = 0
+                    terminations_image[neighbor[0], neighbor[1]] = 0
+
+                    false_bifurcations.append(current_bifurcation)
+                    false_terminations.append(neighbor)
+
+            # TODO check for other 2 false minutiae criteria
+    return false_bifurcations, false_terminations
