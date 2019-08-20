@@ -196,40 +196,54 @@ def false_minutiae_removal(skeleton: np.ndarray,
     # leave for future use
     # inverse_ridge_map = inverse_dictionary(original_dict=ridge_map, unique_values=False)  # Dict[int, List[Coordinate]]
 
-    false_bifurcation_removal(bifurcations=bifurcations, bifurcation_image=bifurcation_image, ridge_map=ridge_map)
+    false_bifurcations_removal(height=height, width=width, bifurcations=bifurcations, terminations=terminations,
+                               bifurcations_image=bifurcation_image, terminations_image=terminations_image,
+                               threshold=false_minutiae_threshold, ridge_map=ridge_map)
+    false_terminations_removal(height=height, width=width, )
     return false_bifurcations, false_terminations
 
 
-def false_bifurcation_removal(height: int, weight: int,
-                              bifurcations: List[Coordinate],
-                              bifurcation_image: np.ndarray,
-                              ridge_map: Dict[Coordinate, int]):
+def false_bifurcations_removal(height: int, width: int,
+                               bifurcations: List[Coordinate],
+                               terminations: List[Coordinate],
+                               bifurcations_image: np.ndarray,
+                               terminations_image: np.ndarray,
+                               threshold: float,
+                               ridge_map: Dict[Coordinate, int]) -> Tuple[List[Coordinate],
+                                                                          List[Coordinate], List[Coordinate], List[
+                                                                              Coordinate], np.ndarray, np.ndarray]:
     """
     Remove false bifurcations in the fingerprint skeleton
     :param height: skeleton height
-    :param weight: skeleton weight
+    :param width: skeleton weight
     :param bifurcations: the list of bifurcation coordinates
-    :param bifurcation_image: the image containing "1" where a bifurcation is located
+    :param terminations: the list of termination coordinates
+    :param bifurcations_image: an image containing "1" where a bifurcation is located
+    :param terminations_image: an image containing "1" where a termination is located
     :param ridge_map: a dictionary mapping each pixel of a ridge to its unique identifier
-    :return: the bifurcations coordinates, the bifurcation image and the list of false bifurcations
+    :param threshold: the size of the neighborhood around a termination
+    :return: the bifurcations and terminations coordinates, the bifurcation and terminations image and
+    the list of false bifurcations and terminations
     """
+    false_bifurcations, false_terminations = [], []
+
     # current_bifurcation: Coordinate
     for current_bifurcation in bifurcations:
         # find other minutiae in the neighborhood -> no need to check distance
         neighbor_coordinates, _ = get_neighbor_coordinates(seed_coordinates=current_bifurcation,
-                                                           kernel_size=np.floor(false_minutiae_threshold),
+                                                           kernel_size=np.floor(threshold),
                                                            width=width, height=height, include_seed=False)
         # neighbor: Coordinate
         for neighbor in neighbor_coordinates:
-            if bifurcation_image(neighbor[0], neighbor[1]) == 1:  # found another bifurcation in the neighborhood
+            if bifurcations_image(neighbor[0], neighbor[1]) == 1:  # found another bifurcation in the neighborhood
                 if ridge_map[neighbor] == ridge_map[current_bifurcation]:  # both minutiae belong to the same ridge
                     # remove both of them from the original list
                     bifurcations.remove(current_bifurcation)
                     bifurcations.remove(neighbor)
 
                     # update matrices
-                    bifurcation_image[current_bifurcation[0], current_bifurcation[1]] = 0
-                    bifurcation_image[neighbor[0], neighbor[1]] = 0
+                    bifurcations_image[current_bifurcation[0], current_bifurcation[1]] = 0
+                    bifurcations_image[neighbor[0], neighbor[1]] = 0
 
                     false_bifurcations.append(current_bifurcation)
                     false_bifurcations.append(neighbor)
@@ -241,13 +255,67 @@ def false_bifurcation_removal(height: int, weight: int,
                     terminations.remove(neighbor)
 
                     # update matrices
-                    bifurcation_image[current_bifurcation[0], current_bifurcation[1]] = 0
+                    bifurcations_image[current_bifurcation[0], current_bifurcation[1]] = 0
                     terminations_image[neighbor[0], neighbor[1]] = 0
 
                     false_bifurcations.append(current_bifurcation)
                     false_terminations.append(neighbor)
-    return bifucations, false_bifurcations, bifurcation_image
+    return bifurcations, terminations, false_bifurcations, false_teminations, bifurcations_image, terminations_image
 
 
-def false_terminations_removal():
-    pass
+# TODO test
+def false_terminations_removal(height: int, width: int,
+                               terminations: List[Coordinate],
+                               terminations_image: np.ndarray,
+                               ridge_map: Dict[Coordinate, int],
+                               threshold: float,
+                               orientation_map: np.ndarray,
+                               ridge_orientation_threshold: float = np.pi/6):
+    """
+    Remove false bifurcations in the fingerprint skeleton
+    :param height: skeleton height
+    :param width: skeleton weight
+    :param terminations: the list of termination coordinates
+    :param terminations_image: an image containing "1" where a termination is located
+    :param ridge_map: a dictionary mapping each pixel of a ridge to its unique identifier
+    :param threshold: the size of the neighborhood around a termination
+    :param orientation_map: a matrix containing the directions of the ridges
+    :return: the terminations coordinates, the terminations image and the list of false terminations
+    """
+    false_terminations = []
+
+    # current_bifurcation: Coordinate
+    for current_termination in terminations:
+        # find other minutiae in the neighborhood -> no need to check distance
+        neighbor_coordinates, _ = get_neighbor_coordinates(seed_coordinates=current_termination,
+                                                           kernel_size=np.floor(threshold),
+                                                           width=width, height=height, include_seed=False)
+        # neighbor: Coordinate
+        # TODO change to the according criteria
+        for neighbor in neighbor_coordinates:
+            if bifurcations_image(neighbor[0], neighbor[1]) == 1:  # found another bifurcation in the neighborhood
+                if ridge_map[neighbor] == ridge_map[current_termination]:  # both minutiae belong to the same ridge
+                    # remove both of them from the original list
+                    bifurcations.remove(current_termination)
+                    bifurcations.remove(neighbor)
+
+                    # update matrices
+                    bifurcations_image[current_termination[0], current_termination[1]] = 0
+                    bifurcations_image[neighbor[0], neighbor[1]] = 0
+
+                    false_bifurcations.append(current_termination)
+                    false_bifurcations.append(neighbor)
+
+            elif terminations_image(neighbor[0], neighbor[1]) == 1:  # found a termination in the neighborhood
+                if ridge_map[neighbor] == ridge_map[current_termination]:  # both minutiae belong to the same ridge
+                    # remove both of them from the original list
+                    bifurcations.remove(current_termination)
+                    terminations.remove(neighbor)
+
+                    # update matrices
+                    bifurcations_image[current_termination[0], current_termination[1]] = 0
+                    terminations_image[neighbor[0], neighbor[1]] = 0
+
+                    false_bifurcations.append(current_termination)
+                    false_terminations.append(neighbor)
+    return terminations, false_teminations, terminations_image
