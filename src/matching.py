@@ -53,6 +53,7 @@ def sample_r(skel, height, width, samples, processed, i, j, L, n, L_reset):
                             processed.append((h, k))
                             sample_r(skel, height, width, samples, processed, h, k, L-1, n, L_reset)
 
+
 # not tested
 def similarity(samples1, samples2):
     m = min(len(samples1), len(samples2))
@@ -67,3 +68,28 @@ def similarity(samples1, samples2):
         x2, _ = samples2(i)
         den += (x1**2)*(x2**2)
     return np.sqrt(num/den)
+
+
+#not tested
+def minutiae_transform(x, y, theta, minutiae):
+    for i in range(len(minutiae)):
+        xi, yi, thetai = minutiae[i]
+        matrix = np.array([np.cos(theta), -np.sin(theta), 0],
+                          [np.sin(theta), np.cos(theta), 0],
+                          [0, 0, 1])
+        res = np.dot(matrix, np.array([xi-x],[yi-y],[thetai - theta]))
+        minutiae[i] = res #vedere tipo di output
+
+
+#not tested
+def minutiae_match(I1, I2, r0, theta0):
+    mm_tot = 0
+    for i in range(len(I1)):
+        for j in range(len(I2)):
+            xi, yi, thetai = I1[i]
+            xj, yj, thetaj = I1[j]
+            sd = np.sqrt(((xi-xj)**2)+((yi-yj)**2))
+            dd = np.min(np.abs(thetai-thetaj), 360 - np.abs(thetai-thetaj))
+            if sd < r0 and dd < theta0:
+                mm_tot += 1
+    return mm_tot/(np.max(len(I1), len(I2))+1)# ci va il +1?
