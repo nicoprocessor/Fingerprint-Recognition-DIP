@@ -9,7 +9,7 @@ __email__ = "nicola.onofri@gmail.com, " \
 import numpy as np
 import scipy.sparse as sparse
 
-from utils import get_neighbor_coordinates, inverse_dictionary, print_color_image, print_images
+from utils import get_neighbor_coordinates, print_color_image, print_images
 from utils import Coordinate
 
 from typing import Tuple, Dict, List
@@ -100,7 +100,7 @@ def count_pixels(image: np.ndarray, i: int, j: int, block_size: int = 3) -> int:
     return count
 
 
-def find_terminations(skeleton: np.ndarray, label_map, labels: int) -> Coordinate:
+def find_terminations(skeleton: np.ndarray, label_map, orientation_map, labels: int) -> Coordinate:
     """
     Find ridge termination in the fingerprint image
     :param skeleton: the fingerprint skeleton
@@ -113,11 +113,11 @@ def find_terminations(skeleton: np.ndarray, label_map, labels: int) -> Coordinat
         pos = [k for k, v in label_map.items() if v == l]
         for (i, j) in pos:
             if count_pixels(skeleton, i, j) == 2:
-                terminations.append((i, j))
+                terminations.append((i, j, orientation_map[i][j]))
     return terminations
 
 
-def find_bifurcations(skeleton: np.ndarray, label_map, labels: int) -> Coordinate:
+def find_bifurcations(skeleton: np.ndarray, label_map, orientation_map, labels: int) -> Coordinate:
     """
     Find bifurcations in the fingerprint image
     :param skeleton: the fingerprint skeleton
@@ -130,7 +130,7 @@ def find_bifurcations(skeleton: np.ndarray, label_map, labels: int) -> Coordinat
         pos = [k for k, v in label_map.items() if v == l]
         for (i, j) in pos:
             if count_pixels(skeleton, i, j) == 4:
-                bifurcations.append((i, j))
+                bifurcations.append((i, j, orientation_map[i][j]))
     return bifurcations
 
 
@@ -151,7 +151,9 @@ def print_minutiae(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
             if skeleton[h][k] == 1:
                 blank[h][k] = (255, 255, 255)
     for (i, j) in ridges:
-        blank[i][j] = (b, g, r)
+        for h in range(max(0, i - 1), min(height, i + 2)):
+            for k in range(max(0, j - 1), min(width, j + 2)):
+                blank[h][k] = (b, g, r)
     print_color_image(blank)
 
 
