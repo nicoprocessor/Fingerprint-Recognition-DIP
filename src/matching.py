@@ -12,12 +12,24 @@ from utils import print_images
 from utils import print_color_image
 
 
-def alignment(skel1, I1, skel2, I2):
+def match(skel1, I1, skel2, I2):
     n = 10
     L = 5  # use inter ridge length
-    minutia1 = I1[39]  # for testing
-    # minutia2 = I2[39]
-    sample(skel1, minutia1, L, n)
+    for i in range(len(I1)):
+        for j in range(len(I2)):
+            minutia1 = I1[i]
+            minutia2 = I2[j]
+            sample1 = sample(skel1, minutia1, L, n)
+            sample2 = sample(skel2, minutia2, L, n)
+            sim = similarity(sample1, sample2)
+            print(sim)
+            if sim >= 0.8:
+                minutiae.print_minutiae(skel1, sample1, 255, 0, 0)
+                minutiae.print_minutiae(skel2, sample2, 255, 0, 0)
+                print('ok')
+
+
+n_count = 0
 
 
 def sample(skel, minutia, L, n):
@@ -27,47 +39,54 @@ def sample(skel, minutia, L, n):
     processed = []
     samples.append((i, j))
     processed.append((i, j))
-    minutiae.print_minutiae(skel, [(i, j)], 0, 0, 255)
+    #minutiae.print_minutiae(skel, [(i, j)], 0, 0, 255)
+    global n_count
+    n_count = n
     if minutiae.count_pixels(skel, i, j) == 2:
-        sample_r(skel, height, width, samples, processed, i, j, L, n-1, L)
-        minutiae.print_minutiae(skel, samples, 0, 0, 255)
+        n_count = n-1
+        sample_r(skel, height, width, samples, processed, i, j, L, L)
+        # minutiae.print_minutiae(skel, samples, 0, 0, 255)
     if minutiae.count_pixels(skel, i, j) == 4:
         for h in range(max(0, i-1), min(height, i+2)):
             for k in range(max(0, j-1), min(width, j+2)):
                 if skel[h][k] == 1:
-                    sample_r(skel, height, width, samples, processed, i, j, L, n//3, L)
-        minutiae.print_minutiae(skel, samples, 255, 0, 0)
+                    n_count = n//3
+                    sample_r(skel, height, width, samples, processed, i, j, L, L)
+       # minutiae.print_minutiae(skel, samples, 255, 0, 0)
+    return samples
 
 
-def sample_r(skel, height, width, samples, processed, i, j, L, n, L_reset):
-    if n > 0:
+def sample_r(skel, height, width, samples, processed, i, j, L, L_reset):
+    global n_count
+    if n_count > 0:
         for h in range(max(0, i-1), min(height, i+2)):
             for k in range(max(0, j-1), min(width, j+2)):
                 if skel[h][k] == 1:
                     if (h, k) not in processed:
                         if L == 0:
+                            n_count = n_count - 1
                             samples.append((h, k))
                             processed.append((h, k))
-                            sample_r(skel, height, width, samples, processed, h, k, L_reset, n-1, L_reset)
+                            sample_r(skel, height, width, samples, processed, h, k, L_reset, L_reset)
                         else:
                             processed.append((h, k))
-                            sample_r(skel, height, width, samples, processed, h, k, L-1, n, L_reset)
+                            sample_r(skel, height, width, samples, processed, h, k, L-1, L_reset)
 
 
-# not tested
+# ?????
 def similarity(samples1, samples2):
     m = min(len(samples1), len(samples2))
     num = 0
     den = 0
     for i in range(m):
-        x1, _ = samples1(i)
-        x2, _ = samples2(i)
+        x1, _ = samples1[i]
+        x2, _ = samples2[i]
         num += x1*x2
     for i in range(m):
-        x1, _ = samples1(i)
-        x2, _ = samples2(i)
+        x1, _ = samples1[i]
+        x2, _ = samples2[i]
         den += (x1**2)*(x2**2)
-    return np.sqrt(num/den)
+    return num/np.sqrt(den)
 
 
 #not tested
