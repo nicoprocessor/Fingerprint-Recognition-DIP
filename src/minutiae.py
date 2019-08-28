@@ -15,6 +15,30 @@ from utils import Coordinate
 from typing import Tuple, Dict, List
 
 
+def crossing_numbers(skeleton: np.ndarray, orientation_map):
+    """
+    :param skeleton: the fingerprint skeleton
+    :return:
+    """
+    height, width = skeleton.shape
+    minutiae = []
+    for i in range(height-1):
+        for j in range(width-1):
+            if skeleton[i][j] == 1.0:
+                if j == 130 and i == 392:
+                    print('ok')
+                CN = 0
+                P = [skeleton[i][j+1], skeleton[i-1][j+1], skeleton[i-1][j], skeleton[i-1][j-1], skeleton[i][j-1], skeleton[i+1][j-1], skeleton[i+1][j], skeleton[i+1][j+1]]
+                for k in range(len(P)):
+                    CN += np.abs(P[k]-P[(k+1)%8])
+                CN = CN * 0.5
+                if CN == 1:
+                    minutiae.append((i, j, CN, orientation_map[i][j], True))
+                if CN == 3:
+                    minutiae.append((i, j, CN, orientation_map[i][j], True))
+    return minutiae
+
+
 def find_lines(skeleton: np.ndarray):
     """
 
@@ -100,38 +124,38 @@ def count_pixels(image: np.ndarray, i: int, j: int, block_size: int = 3) -> int:
     return count
 
 
-def find_terminations(skeleton: np.ndarray, label_map, orientation_map, labels: int) -> Coordinate:
-    """
-    Find ridge termination in the fingerprint image
-    :param skeleton: the fingerprint skeleton
-    :param label_map:
-    :param labels:
-    :return:
-    """
-    terminations = []
-    for l in range(1, labels+1):
-        pos = [k for k, v in label_map.items() if v == l]
-        for (i, j) in pos:
-            if count_pixels(skeleton, i, j) == 2:
-                terminations.append((i, j, orientation_map[i][j]))
-    return terminations
-
-
-def find_bifurcations(skeleton: np.ndarray, label_map, orientation_map, labels: int) -> Coordinate:
-    """
-    Find bifurcations in the fingerprint image
-    :param skeleton: the fingerprint skeleton
-    :param label_map:
-    :param labels:
-    :return:
-    """
-    bifurcations = []
-    for l in range(1, labels+1):
-        pos = [k for k, v in label_map.items() if v == l]
-        for (i, j) in pos:
-            if count_pixels(skeleton, i, j) == 4:
-                bifurcations.append((i, j, orientation_map[i][j]))
-    return bifurcations
+# def find_terminations(skeleton: np.ndarray, label_map, orientation_map, labels: int) -> Coordinate:
+#     """
+#     Find ridge termination in the fingerprint image
+#     :param skeleton: the fingerprint skeleton
+#     :param label_map:
+#     :param labels:
+#     :return:
+#     """
+#     terminations = []
+#     for l in range(1, labels+1):
+#         pos = [k for k, v in label_map.items() if v == l]
+#         for (i, j) in pos:
+#             if count_pixels(skeleton, i, j) == 2:
+#                 terminations.append((i, j, orientation_map[i][j]))
+#     return terminations
+#
+#
+# def find_bifurcations(skeleton: np.ndarray, label_map, orientation_map, labels: int) -> Coordinate:
+#     """
+#     Find bifurcations in the fingerprint image
+#     :param skeleton: the fingerprint skeleton
+#     :param label_map:
+#     :param labels:
+#     :return:
+#     """
+#     bifurcations = []
+#     for l in range(1, labels+1):
+#         pos = [k for k, v in label_map.items() if v == l]
+#         for (i, j) in pos:
+#             if count_pixels(skeleton, i, j) == 4:
+#                 bifurcations.append((i, j, orientation_map[i][j]))
+#     return bifurcations
 
 
 def print_minutiae(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
@@ -150,174 +174,209 @@ def print_minutiae(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
         for k in range(width):
             if skeleton[h][k] == 1:
                 blank[h][k] = (255, 255, 255)
-    for (i, j) in ridges:
+    for (i, j, _, _, validity) in ridges:
         for h in range(max(0, i - 1), min(height, i + 2)):
             for k in range(max(0, j - 1), min(width, j + 2)):
-                blank[h][k] = (b, g, r)
+                if validity:
+                    blank[i][j] = (b, g, r)
     print_color_image(blank)
 
 
-def inter_ridge_length(skeleton: np.ndarray) -> float:
-    inter_ridge_distance = np.mean(skeleton, axis=1)  # average of all the pixels along rows
-    return np.mean(inter_ridge_distance)
-
-
-def false_minutiae_removal(skeleton: np.ndarray,
-                           ridge_map: Dict[Coordinate, int],
-                           bifurcations: np.ndarray,
-                           terminations: np.ndarray,
-                           orientation_map: np.ndarray,
-                           orientation_angle_threshold: float = np.pi/3) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Remove false minutiae from the fingerprint skeleton
-    :param skeleton: the fingerprint skeleton
-    :param ridge_map: the ridge map that binds each pixel in a ridge with the corresponding ridge identifier
-    :param bifurcations: the coordinates of every ridge bifurcation in the skeleton
-    :param terminations: the coordinates of every ridge termination in the skeleton
-    :param orientation_map: the matrix containing the direction of each ridge
-    :return: the bifurcations and terminations coordinates, without false records
-    """
+#TODO
+def inter_ridge_length(skeleton: np.ndarray, roi) -> float:
     height, width = skeleton.shape
-    false_minutiae_threshold = inter_ridge_length(skeleton)
-    print("False minutiae threshold: "+str(false_minutiae_threshold))  # very low value! Find a better solution
-
-    false_bifurcations, false_terminations = [], []
-    # real_bifurcations, real_terminations = [], []
-
-    # convert minutiae matrices from sparse to full format
-    bifurcations_rows = [x[0] for x in bifurcations]
-    bifurcations_cols = [x[1] for x in bifurcations]
-    bifurcation_image = sparse.coo_matrix((np.ones(len(bifurcations)), (bifurcations_rows, bifurcations_cols)),
-                                          shape=skeleton.shape).toarray()
-
-    terminations_rows = [x[0] for x in terminations]
-    terminations_cols = [x[1] for x in terminations]
-    terminations_image = sparse.coo_matrix((np.ones(len(terminations)), (terminations_rows, terminations_cols)),
-                                           shape=skeleton.shape).toarray()
-
-    # leave for future use
-    # inverse_ridge_map = inverse_dictionary(original_dict=ridge_map, unique_values=False)  # Dict[int, List[Coordinate]]
-
-    false_bifurcations_removal(height=height, width=width, bifurcations=bifurcations, terminations=terminations,
-                               bifurcations_image=bifurcation_image, terminations_image=terminations_image,
-                               threshold=false_minutiae_threshold, ridge_map=ridge_map)
-    false_terminations_removal(height=height, width=width, )
-    return false_bifurcations, false_terminations
+    d = []
+    for i in range(height):
+        count = 0
+        for j in range(width):
+            if roi[i][j] == 1.0:
+                count += 1
+        if count != 0:
+            d.append(np.sum(skeleton[i]) / count)
+    D = np.mean(d)
+    return D
 
 
-def false_bifurcations_removal(height: int, width: int,
-                               bifurcations: List[Coordinate],
-                               terminations: List[Coordinate],
-                               bifurcations_image: np.ndarray,
-                               terminations_image: np.ndarray,
-                               threshold: float,
-                               ridge_map: Dict[Coordinate, int]) -> Tuple[List[Coordinate],
-                                                                          List[Coordinate], List[Coordinate], List[
-                                                                              Coordinate], np.ndarray, np.ndarray]:
-    """
-    Remove false bifurcations in the fingerprint skeleton
-    :param height: skeleton height
-    :param width: skeleton weight
-    :param bifurcations: the list of bifurcation coordinates
-    :param terminations: the list of termination coordinates
-    :param bifurcations_image: an image containing "1" where a bifurcation is located
-    :param terminations_image: an image containing "1" where a termination is located
-    :param ridge_map: a dictionary mapping each pixel of a ridge to its unique identifier
-    :param threshold: the size of the neighborhood around a termination
-    :return: the bifurcations and terminations coordinates, the bifurcation and terminations image and
-    the list of false bifurcations and terminations
-    """
-    false_bifurcations, false_terminations = [], []
-
-    # current_bifurcation: Coordinate
-    for current_bifurcation in bifurcations:
-        # find other minutiae in the neighborhood -> no need to check distance
-        neighbor_coordinates, _ = get_neighbor_coordinates(seed_coordinates=current_bifurcation,
-                                                           kernel_size=np.floor(threshold),
-                                                           width=width, height=height, include_seed=False)
-        # neighbor: Coordinate
-        for neighbor in neighbor_coordinates:
-            if bifurcations_image(neighbor[0], neighbor[1]) == 1:  # found another bifurcation in the neighborhood
-                if ridge_map[neighbor] == ridge_map[current_bifurcation]:  # both minutiae belong to the same ridge
-                    # remove both of them from the original list
-                    bifurcations.remove(current_bifurcation)
-                    bifurcations.remove(neighbor)
-
-                    # update matrices
-                    bifurcations_image[current_bifurcation[0], current_bifurcation[1]] = 0
-                    bifurcations_image[neighbor[0], neighbor[1]] = 0
-
-                    false_bifurcations.append(current_bifurcation)
-                    false_bifurcations.append(neighbor)
-
-            elif terminations_image(neighbor[0], neighbor[1]) == 1:  # found a termination in the neighborhood
-                if ridge_map[neighbor] == ridge_map[current_bifurcation]:  # both minutiae belong to the same ridge
-                    # remove both of them from the original list
-                    bifurcations.remove(current_bifurcation)
-                    terminations.remove(neighbor)
-
-                    # update matrices
-                    bifurcations_image[current_bifurcation[0], current_bifurcation[1]] = 0
-                    terminations_image[neighbor[0], neighbor[1]] = 0
-
-                    false_bifurcations.append(current_bifurcation)
-                    false_terminations.append(neighbor)
-    return bifurcations, terminations, false_bifurcations, false_teminations, bifurcations_image, terminations_image
+def same_ridge(minutia1, minutia2, ridge_identification_map):
+    x1, y1, _, _, _ = minutia1
+    x2, y2, _, _, _ = minutia2
+    v1 = ridge_identification_map.get((x1, y1))
+    v2 = ridge_identification_map.get((x2, y2))
+    return v1 == v2
 
 
-# TODO test
-def false_terminations_removal(height: int, width: int,
-                               terminations: List[Coordinate],
-                               terminations_image: np.ndarray,
-                               ridge_map: Dict[Coordinate, int],
-                               threshold: float,
-                               orientation_map: np.ndarray,
-                               ridge_orientation_threshold: float = np.pi/6):
-    """
-    Remove false bifurcations in the fingerprint skeleton
-    :param height: skeleton height
-    :param width: skeleton weight
-    :param terminations: the list of termination coordinates
-    :param terminations_image: an image containing "1" where a termination is located
-    :param ridge_map: a dictionary mapping each pixel of a ridge to its unique identifier
-    :param threshold: the size of the neighborhood around a termination
-    :param orientation_map: a matrix containing the directions of the ridges
-    :return: the terminations coordinates, the terminations image and the list of false terminations
-    """
-    false_terminations = []
+def false_minutiae_removal(skeleton, minutiae, ridge_identification_map):
+    D = 10 # use inter ridge distance or something else
+    height, width = skeleton.shape
+    for i in range(len(minutiae)):
+        for j in range(i+1, len(minutiae)):
+            minutia1 = minutiae[i]
+            minutia2 = minutiae[j]
+            x1, y1, CN1, O1, _ = minutia1
+            x2, y2, CN2, O2, _ = minutia2
+            dist = np.sqrt((x1-x2)**2+(y1-y2)**2)
+            if CN1 == CN2 == 3 and dist < D and same_ridge(minutia1, minutia2, ridge_identification_map):
+                minutiae[i] = x1, y1, CN1, O1, False
+                minutiae[j] = x2, y2, CN2, O2, False
+    return minutiae
 
-    # current_bifurcation: Coordinate
-    for current_termination in terminations:
-        # find other minutiae in the neighborhood -> no need to check distance
-        neighbor_coordinates, _ = get_neighbor_coordinates(seed_coordinates=current_termination,
-                                                           kernel_size=np.floor(threshold),
-                                                           width=width, height=height, include_seed=False)
-        # neighbor: Coordinate
-        # TODO change to the according criteria
-        for neighbor in neighbor_coordinates:
-            if bifurcations_image(neighbor[0], neighbor[1]) == 1:  # found another bifurcation in the neighborhood
-                if ridge_map[neighbor] == ridge_map[current_termination]:  # both minutiae belong to the same ridge
-                    # remove both of them from the original list
-                    bifurcations.remove(current_termination)
-                    bifurcations.remove(neighbor)
 
-                    # update matrices
-                    bifurcations_image[current_termination[0], current_termination[1]] = 0
-                    bifurcations_image[neighbor[0], neighbor[1]] = 0
-
-                    false_bifurcations.append(current_termination)
-                    false_bifurcations.append(neighbor)
-
-            elif terminations_image(neighbor[0], neighbor[1]) == 1:  # found a termination in the neighborhood
-                if ridge_map[neighbor] == ridge_map[current_termination]:  # both minutiae belong to the same ridge
-                    # remove both of them from the original list
-                    bifurcations.remove(current_termination)
-                    terminations.remove(neighbor)
-
-                    # update matrices
-                    bifurcations_image[current_termination[0], current_termination[1]] = 0
-                    terminations_image[neighbor[0], neighbor[1]] = 0
-
-                    false_bifurcations.append(current_termination)
-                    false_terminations.append(neighbor)
-    return terminations, false_teminations, terminations_image
+# def false_minutiae_removal(skeleton: np.ndarray,
+#                            ridge_map: Dict[Coordinate, int],
+#                            bifurcations: np.ndarray,
+#                            terminations: np.ndarray,
+#                            orientation_map: np.ndarray,
+#                            orientation_angle_threshold: float = np.pi/3) -> Tuple[np.ndarray, np.ndarray]:
+#     """
+#     Remove false minutiae from the fingerprint skeleton
+#     :param skeleton: the fingerprint skeleton
+#     :param ridge_map: the ridge map that binds each pixel in a ridge with the corresponding ridge identifier
+#     :param bifurcations: the coordinates of every ridge bifurcation in the skeleton
+#     :param terminations: the coordinates of every ridge termination in the skeleton
+#     :param orientation_map: the matrix containing the direction of each ridge
+#     :return: the bifurcations and terminations coordinates, without false records
+#     """
+#     height, width = skeleton.shape
+#     false_minutiae_threshold = inter_ridge_length(skeleton)
+#     print("False minutiae threshold: "+str(false_minutiae_threshold))  # very low value! Find a better solution
+#
+#     false_bifurcations, false_terminations = [], []
+#     # real_bifurcations, real_terminations = [], []
+#
+#     # convert minutiae matrices from sparse to full format
+#     bifurcations_rows = [x[0] for x in bifurcations]
+#     bifurcations_cols = [x[1] for x in bifurcations]
+#     bifurcation_image = sparse.coo_matrix((np.ones(len(bifurcations)), (bifurcations_rows, bifurcations_cols)),
+#                                           shape=skeleton.shape).toarray()
+#
+#     terminations_rows = [x[0] for x in terminations]
+#     terminations_cols = [x[1] for x in terminations]
+#     terminations_image = sparse.coo_matrix((np.ones(len(terminations)), (terminations_rows, terminations_cols)),
+#                                            shape=skeleton.shape).toarray()
+#
+#     # leave for future use
+#     # inverse_ridge_map = inverse_dictionary(original_dict=ridge_map, unique_values=False)  # Dict[int, List[Coordinate]]
+#
+#     false_bifurcations_removal(height=height, width=width, bifurcations=bifurcations, terminations=terminations,
+#                                bifurcations_image=bifurcation_image, terminations_image=terminations_image,
+#                                threshold=false_minutiae_threshold, ridge_map=ridge_map)
+#     false_terminations_removal(height=height, width=width, )
+#     return false_bifurcations, false_terminations
+#
+#
+# def false_bifurcations_removal(height: int, width: int,
+#                                bifurcations: List[Coordinate],
+#                                terminations: List[Coordinate],
+#                                bifurcations_image: np.ndarray,
+#                                terminations_image: np.ndarray,
+#                                threshold: float,
+#                                ridge_map: Dict[Coordinate, int]) -> Tuple[List[Coordinate],
+#                                                                           List[Coordinate], List[Coordinate], List[
+#                                                                               Coordinate], np.ndarray, np.ndarray]:
+#     """
+#     Remove false bifurcations in the fingerprint skeleton
+#     :param height: skeleton height
+#     :param width: skeleton weight
+#     :param bifurcations: the list of bifurcation coordinates
+#     :param terminations: the list of termination coordinates
+#     :param bifurcations_image: an image containing "1" where a bifurcation is located
+#     :param terminations_image: an image containing "1" where a termination is located
+#     :param ridge_map: a dictionary mapping each pixel of a ridge to its unique identifier
+#     :param threshold: the size of the neighborhood around a termination
+#     :return: the bifurcations and terminations coordinates, the bifurcation and terminations image and
+#     the list of false bifurcations and terminations
+#     """
+#     false_bifurcations, false_terminations = [], []
+#
+#     # current_bifurcation: Coordinate
+#     for current_bifurcation in bifurcations:
+#         # find other minutiae in the neighborhood -> no need to check distance
+#         neighbor_coordinates, _ = get_neighbor_coordinates(seed_coordinates=current_bifurcation,
+#                                                            kernel_size=np.floor(threshold),
+#                                                            width=width, height=height, include_seed=False)
+#         # neighbor: Coordinate
+#         for neighbor in neighbor_coordinates:
+#             if bifurcations_image(neighbor[0], neighbor[1]) == 1:  # found another bifurcation in the neighborhood
+#                 if ridge_map[neighbor] == ridge_map[current_bifurcation]:  # both minutiae belong to the same ridge
+#                     # remove both of them from the original list
+#                     bifurcations.remove(current_bifurcation)
+#                     bifurcations.remove(neighbor)
+#
+#                     # update matrices
+#                     bifurcations_image[current_bifurcation[0], current_bifurcation[1]] = 0
+#                     bifurcations_image[neighbor[0], neighbor[1]] = 0
+#
+#                     false_bifurcations.append(current_bifurcation)
+#                     false_bifurcations.append(neighbor)
+#
+#             elif terminations_image(neighbor[0], neighbor[1]) == 1:  # found a termination in the neighborhood
+#                 if ridge_map[neighbor] == ridge_map[current_bifurcation]:  # both minutiae belong to the same ridge
+#                     # remove both of them from the original list
+#                     bifurcations.remove(current_bifurcation)
+#                     terminations.remove(neighbor)
+#
+#                     # update matrices
+#                     bifurcations_image[current_bifurcation[0], current_bifurcation[1]] = 0
+#                     terminations_image[neighbor[0], neighbor[1]] = 0
+#
+#                     false_bifurcations.append(current_bifurcation)
+#                     false_terminations.append(neighbor)
+#     return bifurcations, terminations, false_bifurcations, false_teminations, bifurcations_image, terminations_image
+#
+#
+# # TODO test
+# def false_terminations_removal(height: int, width: int,
+#                                terminations: List[Coordinate],
+#                                terminations_image: np.ndarray,
+#                                ridge_map: Dict[Coordinate, int],
+#                                threshold: float,
+#                                orientation_map: np.ndarray,
+#                                ridge_orientation_threshold: float = np.pi/6):
+#     """
+#     Remove false bifurcations in the fingerprint skeleton
+#     :param height: skeleton height
+#     :param width: skeleton weight
+#     :param terminations: the list of termination coordinates
+#     :param terminations_image: an image containing "1" where a termination is located
+#     :param ridge_map: a dictionary mapping each pixel of a ridge to its unique identifier
+#     :param threshold: the size of the neighborhood around a termination
+#     :param orientation_map: a matrix containing the directions of the ridges
+#     :return: the terminations coordinates, the terminations image and the list of false terminations
+#     """
+#     false_terminations = []
+#
+#     # current_bifurcation: Coordinate
+#     for current_termination in terminations:
+#         # find other minutiae in the neighborhood -> no need to check distance
+#         neighbor_coordinates, _ = get_neighbor_coordinates(seed_coordinates=current_termination,
+#                                                            kernel_size=np.floor(threshold),
+#                                                            width=width, height=height, include_seed=False)
+#         # neighbor: Coordinate
+#         # TODO change to the according criteria
+#         for neighbor in neighbor_coordinates:
+#             if bifurcations_image(neighbor[0], neighbor[1]) == 1:  # found another bifurcation in the neighborhood
+#                 if ridge_map[neighbor] == ridge_map[current_termination]:  # both minutiae belong to the same ridge
+#                     # remove both of them from the original list
+#                     bifurcations.remove(current_termination)
+#                     bifurcations.remove(neighbor)
+#
+#                     # update matrices
+#                     bifurcations_image[current_termination[0], current_termination[1]] = 0
+#                     bifurcations_image[neighbor[0], neighbor[1]] = 0
+#
+#                     false_bifurcations.append(current_termination)
+#                     false_bifurcations.append(neighbor)
+#
+#             elif terminations_image(neighbor[0], neighbor[1]) == 1:  # found a termination in the neighborhood
+#                 if ridge_map[neighbor] == ridge_map[current_termination]:  # both minutiae belong to the same ridge
+#                     # remove both of them from the original list
+#                     bifurcations.remove(current_termination)
+#                     terminations.remove(neighbor)
+#
+#                     # update matrices
+#                     bifurcations_image[current_termination[0], current_termination[1]] = 0
+#                     terminations_image[neighbor[0], neighbor[1]] = 0
+#
+#                     false_bifurcations.append(current_termination)
+#                     false_terminations.append(neighbor)
+#     return terminations, false_teminations, terminations_image
