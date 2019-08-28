@@ -178,7 +178,7 @@ def print_minutiae(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
         for h in range(max(0, i - 1), min(height, i + 2)):
             for k in range(max(0, j - 1), min(width, j + 2)):
                 if validity:
-                    blank[i][j] = (b, g, r)
+                    blank[h][k] = (b, g, r)
     print_color_image(blank)
 
 
@@ -206,7 +206,7 @@ def same_ridge(minutia1, minutia2, ridge_identification_map):
 
 
 def false_minutiae_removal(skeleton, minutiae, ridge_identification_map):
-    D = 10 # use inter ridge distance or something else
+    D = 13 # use inter ridge distance or something else
     height, width = skeleton.shape
     for i in range(len(minutiae)):
         for j in range(i+1, len(minutiae)):
@@ -218,6 +218,14 @@ def false_minutiae_removal(skeleton, minutiae, ridge_identification_map):
             if CN1 == CN2 == 3 and dist < D and same_ridge(minutia1, minutia2, ridge_identification_map):
                 minutiae[i] = x1, y1, CN1, O1, False
                 minutiae[j] = x2, y2, CN2, O2, False
+            else:
+                if CN1 == CN2 == 1 and dist < D:
+                    minutiae[i] = x1, y1, CN1, O1, False
+                    minutiae[j] = x2, y2, CN2, O2, False
+                else:
+                    if ((CN1 == 1 and CN2 == 3) or (CN1 == 3 and CN2 == 1)) and dist < 10 and same_ridge(minutia1, minutia2, ridge_identification_map):
+                        minutiae[i] = x1, y1, CN1, O1, False
+                        minutiae[j] = x2, y2, CN2, O2, False
     return minutiae
 
 
