@@ -21,12 +21,13 @@ def match(skel1, I1, skel2, I2):
             minutia2 = I2[j]
             sample1 = sample(skel1, minutia1, L, n)
             sample2 = sample(skel2, minutia2, L, n)
-            sim = similarity(sample1, sample2)
-            print(sim)
-            if sim >= 0.8:
-                minutiae.print_minutiae(skel1, sample1, 255, 0, 0)
-                minutiae.print_minutiae(skel2, sample2, 255, 0, 0)
-                print('ok')
+            # sim = similarity(sample1, sample2)
+            # print(sim)
+            # if sim >= 0.8:
+            #     minutiae.print_minutiae(skel1, sample1, 255, 0, 0)
+            #     minutiae.print_minutiae(skel2, sample2, 255, 0, 0)
+            #     print('ok')
+            minutiae_match()
 
 
 n_count = 0
@@ -34,7 +35,7 @@ n_count = 0
 
 def sample(skel, minutia, L, n):
     height, width = skel.shape
-    i, j = minutia
+    i, j, _ = minutia
     samples = []
     processed = []
     samples.append((i, j))
@@ -79,12 +80,12 @@ def similarity(samples1, samples2):
     num = 0
     den = 0
     for i in range(m):
-        x1, _ = samples1[i]
-        x2, _ = samples2[i]
+        x1, _, _ = samples1[i]
+        x2, _, _ = samples2[i]
         num += x1*x2
     for i in range(m):
-        x1, _ = samples1[i]
-        x2, _ = samples2[i]
+        x1, _, _ = samples1[i]
+        x2, _, _ = samples2[i]
         den += (x1**2)*(x2**2)
     return num/np.sqrt(den)
 

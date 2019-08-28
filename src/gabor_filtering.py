@@ -158,10 +158,10 @@ def get_orientation_map(image: np.ndarray, block_size: int = 16, sobel_kernel_si
         j = 0
 
     # print ridge orientation
-    vector_field_img = display_orientation_map(ridge_orientation=orientation,
-                                               coherence_map=orientation_coherence,
-                                               block_size=block_size,
-                                               regularize=True)
+    # vector_field_img = display_orientation_map(ridge_orientation=orientation,
+    #                                            coherence_map=orientation_coherence,
+    #                                            block_size=block_size,
+    #                                            regularize=True)
     # utils.display_image(vector_field_img, title="Orientation field")
     return orientation
 
@@ -174,8 +174,8 @@ def get_gabor_kernel(kernel_size: int, orientation: float, frequency: float) -> 
     :param frequency: the frequency of the modulating sine wave
     :return: the Gabor kernel
     """
-    x_sigma = 4
-    y_sigma = 4
+    x_sigma = 3
+    y_sigma = 3
 
     kernel = np.empty((kernel_size, kernel_size))
     for i in range(0, kernel_size):

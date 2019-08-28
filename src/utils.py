@@ -93,22 +93,22 @@ def symmetrical_wrt_center_point(symmetry_origin: np.ndarray, point: np.ndarray)
     return dst
 
 
-def inverse_dictionary(original_dict: Dict[Any], unique_values: bool = False) -> Dict[Any]:
-    """Swap keys and values in the dictionary
-    :param original_dict: the dictionary that will be inverted
-    :param unique_values: true if the values in the original dictionary are unique.
-    If false, the inverse dictionary will contain the list of original keys that were mapped to the same value, i.e:
-    original_dict = {'a':1, 'b':1, 'c':2} -> inverse_dict = {1:['a','b'], 2:['c']}"""
-    inverse_dict = {}
-
-    if unique_values:
-        for k, v in original_dict.items():
-            inverse_dict[v] = original_dict.get(v, [])
-            inverse_dict[v].append(k)
-    else:
-        for k, v in original_dict.items():
-            inverse_dict[v] = k
-    return inverse_dict
+# def inverse_dictionary(original_dict: Dict[Any], unique_values: bool = False) -> Dict[Any]:
+#     """Swap keys and values in the dictionary
+#     :param original_dict: the dictionary that will be inverted
+#     :param unique_values: true if the values in the original dictionary are unique.
+#     If false, the inverse dictionary will contain the list of original keys that were mapped to the same value, i.e:
+#     original_dict = {'a':1, 'b':1, 'c':2} -> inverse_dict = {1:['a','b'], 2:['c']}"""
+#     inverse_dict = {}
+#
+#     if unique_values:
+#         for k, v in original_dict.items():
+#             inverse_dict[v] = original_dict.get(v, [])
+#             inverse_dict[v].append(k)
+#     else:
+#         for k, v in original_dict.items():
+#             inverse_dict[v] = k
+#     return inverse_dict
 
 
 def check_membership_in_sorted_set_and_pop(element: Scalar, sorted_list: List[Scalar]) -> Tuple[bool, List[Scalar]]:

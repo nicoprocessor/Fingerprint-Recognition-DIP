@@ -15,6 +15,30 @@ from utils import Coordinate
 from typing import Tuple, Dict, List
 
 
+def crossing_numbers(skeleton: np.ndarray, orientation_map):
+    """
+    :param skeleton: the fingerprint skeleton
+    :return:
+    """
+    height, width = skeleton.shape
+    minutiae = []
+    for i in range(height-1):
+        for j in range(width-1):
+            if skeleton[i][j] == 1.0:
+                if j == 130 and i == 392:
+                    print('ok')
+                CN = 0
+                P = [skeleton[i][j+1], skeleton[i-1][j+1], skeleton[i-1][j], skeleton[i-1][j-1], skeleton[i][j-1], skeleton[i+1][j-1], skeleton[i+1][j], skeleton[i+1][j+1]]
+                for k in range(len(P)):
+                    CN += np.abs(P[k]-P[(k+1)%8])
+                CN = CN * 0.5
+                if CN == 1:
+                    minutiae.append((i, j, CN, orientation_map[i][j]))
+                if CN == 3:
+                    minutiae.append((i, j, CN, orientation_map[i][j]))
+    return minutiae
+
+
 def find_lines(skeleton: np.ndarray):
     """
 
@@ -100,38 +124,38 @@ def count_pixels(image: np.ndarray, i: int, j: int, block_size: int = 3) -> int:
     return count
 
 
-def find_terminations(skeleton: np.ndarray, label_map, orientation_map, labels: int) -> Coordinate:
-    """
-    Find ridge termination in the fingerprint image
-    :param skeleton: the fingerprint skeleton
-    :param label_map:
-    :param labels:
-    :return:
-    """
-    terminations = []
-    for l in range(1, labels+1):
-        pos = [k for k, v in label_map.items() if v == l]
-        for (i, j) in pos:
-            if count_pixels(skeleton, i, j) == 2:
-                terminations.append((i, j, orientation_map[i][j]))
-    return terminations
-
-
-def find_bifurcations(skeleton: np.ndarray, label_map, orientation_map, labels: int) -> Coordinate:
-    """
-    Find bifurcations in the fingerprint image
-    :param skeleton: the fingerprint skeleton
-    :param label_map:
-    :param labels:
-    :return:
-    """
-    bifurcations = []
-    for l in range(1, labels+1):
-        pos = [k for k, v in label_map.items() if v == l]
-        for (i, j) in pos:
-            if count_pixels(skeleton, i, j) == 4:
-                bifurcations.append((i, j, orientation_map[i][j]))
-    return bifurcations
+# def find_terminations(skeleton: np.ndarray, label_map, orientation_map, labels: int) -> Coordinate:
+#     """
+#     Find ridge termination in the fingerprint image
+#     :param skeleton: the fingerprint skeleton
+#     :param label_map:
+#     :param labels:
+#     :return:
+#     """
+#     terminations = []
+#     for l in range(1, labels+1):
+#         pos = [k for k, v in label_map.items() if v == l]
+#         for (i, j) in pos:
+#             if count_pixels(skeleton, i, j) == 2:
+#                 terminations.append((i, j, orientation_map[i][j]))
+#     return terminations
+#
+#
+# def find_bifurcations(skeleton: np.ndarray, label_map, orientation_map, labels: int) -> Coordinate:
+#     """
+#     Find bifurcations in the fingerprint image
+#     :param skeleton: the fingerprint skeleton
+#     :param label_map:
+#     :param labels:
+#     :return:
+#     """
+#     bifurcations = []
+#     for l in range(1, labels+1):
+#         pos = [k for k, v in label_map.items() if v == l]
+#         for (i, j) in pos:
+#             if count_pixels(skeleton, i, j) == 4:
+#                 bifurcations.append((i, j, orientation_map[i][j]))
+#     return bifurcations
 
 
 def print_minutiae(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
@@ -150,16 +174,34 @@ def print_minutiae(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
         for k in range(width):
             if skeleton[h][k] == 1:
                 blank[h][k] = (255, 255, 255)
-    for (i, j) in ridges:
-        for h in range(max(0, i - 1), min(height, i + 2)):
-            for k in range(max(0, j - 1), min(width, j + 2)):
-                blank[h][k] = (b, g, r)
+    for (i, j, _, _) in ridges:
+        # for h in range(max(0, i - 1), min(height, i + 2)):
+        #     for k in range(max(0, j - 1), min(width, j + 2)):
+                blank[i][j] = (b, g, r)
     print_color_image(blank)
 
 
-def inter_ridge_length(skeleton: np.ndarray) -> float:
-    inter_ridge_distance = np.mean(skeleton, axis=1)  # average of all the pixels along rows
-    return np.mean(inter_ridge_distance)
+#TODO
+def inter_ridge_length(skeleton: np.ndarray, roi) -> float:
+    height, width = skeleton.shape
+    d = []
+    for i in range(height):
+        count = 0
+        for j in range(width):
+            if roi[i][j] == 1.0:
+                count += 1
+        if count != 0:
+            d.append(np.sum(skeleton[i]) / count)
+    D = np.mean(d)
+    return D
+
+
+def same_ridge(minutia1, minutia2, ridge_identification_map):
+    x1, y1, _, _ = minutia1
+    x2, y2, _, _ = minutia2
+    v1 = ridge_identification_map.get((x1, y1))
+    v2 = ridge_identification_map.get((x2, y2))
+    return v1 == v2
 
 
 def false_minutiae_removal(skeleton: np.ndarray,
