@@ -94,11 +94,13 @@ def symmetrical_wrt_center_point(symmetry_origin: np.ndarray, point: np.ndarray)
 
 
 def inverse_dictionary(original_dict: Dict[Any], unique_values: bool = False) -> Dict[Any]:
-    """Swap keys and values in the dictionary
+    """
+    Swap keys and values in the dictionary
     :param original_dict: the dictionary that will be inverted
     :param unique_values: true if the values in the original dictionary are unique.
     If false, the inverse dictionary will contain the list of original keys that were mapped to the same value, i.e:
-    original_dict = {'a':1, 'b':1, 'c':2} -> inverse_dict = {1:['a','b'], 2:['c']}"""
+    original_dict = {'a':1, 'b':1, 'c':2} -> inverse_dict = {1:['a','b'], 2:['c']}
+    """
     inverse_dict = {}
 
     if unique_values:
@@ -109,6 +111,26 @@ def inverse_dictionary(original_dict: Dict[Any], unique_values: bool = False) ->
         for k, v in original_dict.items():
             inverse_dict[v] = k
     return inverse_dict
+
+
+def euclidean_distance(coord1: Coordinate, coord2: Coordinate) -> float:
+    """
+    Euclidean distance between two points
+    :param coord1: coordinates of the first point
+    :param coord2: coordinates of the second point
+    :return: the euclidean distance
+    """
+    return np.sqrt((coord1[0]-coord2[0])**2+(coord1[0]-coord2[0])**2)
+
+
+def manhattan_distance(coord1: Coordinate, coord2: Coordinate) -> float:
+    """
+    Manhattan distance between two points
+    :param coord1: coordinates of the first point
+    :param coord2: coordinates of the second point
+    :return: the Manhattan distance
+    """
+    return abs(coord1[0]-coord2[0])+abs(coord1[1]-coord2[1])
 
 
 def check_membership_in_sorted_set_and_pop(element: Scalar, sorted_list: List[Scalar]) -> Tuple[bool, List[Scalar]]:
