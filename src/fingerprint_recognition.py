@@ -56,6 +56,5 @@ if __name__ == '__main__':
     minutiae = crossing_numbers(processed_img1, ridge_orientation_map1)
     print_minutiae(processed_img1, minutiae, 255, 0, 0)
     ridge_identification_map1, labels1 = find_lines(processed_img1)
-    print('ok')
-    a = same_ridge(minutiae[0], minutiae[2], ridge_identification_map1)
-    print(a)
+    minutiae = false_minutiae_removal(processed_img1, minutiae, ridge_identification_map1)
+    print_minutiae(processed_img1, minutiae, 255, 0, 0)
