@@ -182,6 +182,29 @@ def print_minutiae(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
     print_color_image(blank)
 
 
+def print_minutiae2(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
+    """
+    Highlight minutiae points in the fingerprint skeleton
+    :param skeleton: the fingerprint skeleton
+    :param ridges: the ridge map
+    :param b: the blue color channel intensity value
+    :param g: the green color channel intensity value
+    :param r: the red color channel intensity value
+    """
+    height, width = skeleton.shape
+    blank = np.zeros((height, width, 3), np.uint8)
+
+    for h in range(height):
+        for k in range(width):
+            if skeleton[h][k] == 1:
+                blank[h][k] = (255, 255, 255)
+    for (i, j) in ridges:
+        for h in range(max(0, i - 1), min(height, i + 2)):
+            for k in range(max(0, j - 1), min(width, j + 2)):
+                blank[h][k] = (b, g, r)
+    print_color_image(blank)
+
+
 #TODO
 def inter_ridge_length(skeleton: np.ndarray, roi) -> float:
     height, width = skeleton.shape
@@ -388,3 +411,19 @@ def false_minutiae_removal(skeleton, minutiae, ridge_identification_map):
 #                     false_bifurcations.append(current_termination)
 #                     false_terminations.append(neighbor)
 #     return terminations, false_teminations, terminations_image
+
+
+def remove_minutiae(minutiae):
+    """
+
+    :param minutiae:
+    :return:
+    """
+    real_minutiae = []
+
+    for minutia in minutiae:
+        x, y, CN, O, validity = minutia
+        if validity == True:
+            minutia = x, y, CN, np.rad2deg(O), validity
+            real_minutiae.append(minutia)
+    return real_minutiae

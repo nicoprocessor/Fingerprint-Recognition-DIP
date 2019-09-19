@@ -9,7 +9,7 @@ __email__ = "nicola.onofri@gmail.com, " \
 import numpy as np
 import cv2
 
-from minutiae import find_lines, false_minutiae_removal, print_minutiae, crossing_numbers, inter_ridge_length, same_ridge
+from minutiae import find_lines, false_minutiae_removal, print_minutiae, crossing_numbers, inter_ridge_length, same_ridge, remove_minutiae
 from utils import load_image
 from utils import get_neighbor_coordinates
 from utils import print_images
@@ -38,6 +38,7 @@ def pre_processing(img: np.ndarray):
     # gabor filtering
     ridge_orientation = gabor.get_orientation_map(normalized)
     ridge_frequency = gabor.get_frequency_map(normalized)
+    a = np.mean(ridge_frequency)
     roi = enhancement.roi_mask(normalized)
     image = gabor.gabor_filter(normalized, ridge_orientation, ridge_frequency,
                                block_size=32, gabor_kernel_size=16)
@@ -52,9 +53,18 @@ def pre_processing(img: np.ndarray):
 
 if __name__ == '__main__':
     fingerprint1 = load_image(filename="thumb1.jpg", cv2_read_param=0)
+    fingerprint2 = load_image(filename="thumb2.jpg", cv2_read_param=0)
     processed_img1, ridge_orientation_map1 = pre_processing(fingerprint1)
-    minutiae = crossing_numbers(processed_img1, ridge_orientation_map1)
-    print_minutiae(processed_img1, minutiae, 255, 0, 0)
+    processed_img2, ridge_orientation_map2 = pre_processing(fingerprint2)
+    minutiae1 = crossing_numbers(processed_img1, ridge_orientation_map1)
+    minutiae2 = crossing_numbers(processed_img2, ridge_orientation_map2)
+    #print_minutiae(processed_img1, minutiae, 255, 0, 0)
     ridge_identification_map1, labels1 = find_lines(processed_img1)
-    minutiae = false_minutiae_removal(processed_img1, minutiae, ridge_identification_map1)
-    print_minutiae(processed_img1, minutiae, 255, 0, 0)
+    ridge_identification_map2, labels2 = find_lines(processed_img2)
+    minutiae1 = false_minutiae_removal(processed_img1, minutiae1, ridge_identification_map1)
+    minutiae2 = false_minutiae_removal(processed_img2, minutiae2, ridge_identification_map2)
+    minutiae1 = remove_minutiae(minutiae1)
+    minutiae2 = remove_minutiae(minutiae2)
+    print_minutiae(processed_img1, minutiae1, 255, 0, 0)
+    print_minutiae(processed_img2, minutiae2, 255, 0, 0)
+    matching.match(processed_img1, minutiae1, processed_img2, minutiae2)
