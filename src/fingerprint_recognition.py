@@ -15,7 +15,7 @@ from utils import get_neighbor_coordinates
 from utils import print_images
 from utils import print_color_image
 from typing import Tuple, Union
-import matching
+from matching import find_best_transformation
 
 import gabor_filtering as gabor
 import fingerprint_enhancement as enhancement
@@ -33,7 +33,7 @@ def pre_processing(img: np.ndarray):
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     equalized = clahe.apply(denoised)
     normalized = enhancement.normalize(equalized)
-    #print_images([negated, denoised, normalized])
+    # print_images([negated, denoised, normalized])
 
     # gabor filtering
     ridge_orientation = gabor.get_orientation_map(normalized)
@@ -49,6 +49,11 @@ def pre_processing(img: np.ndarray):
     thinned = enhancement.ridge_thinning(binarized)
     # print_images([image, enhancement.ridge_thinning(enhancement.binarization(image))])
     return thinned, ridge_orientation
+
+
+# def save_minutiae(minutiae, filename):
+#     """Save minutiae points on an external file"""
+#
 
 
 if __name__ == '__main__':

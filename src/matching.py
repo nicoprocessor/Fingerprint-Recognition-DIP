@@ -10,6 +10,7 @@ import numpy as np
 import minutiae
 from utils import print_images
 from utils import print_color_image
+from utils import rotate_vector
 
 
 def match(skel1, I1, skel2, I2):
@@ -33,7 +34,7 @@ def minutiae_transform(x, y, theta, minutiae):
         minutiae[i] = xnew, ynew, c, theta_new, validity
 
 
-#not tested
+# not tested
 def minutiae_match(I1, I2, r0, theta0):
     mm_tot = 0
     for i in range(len(I1)):
