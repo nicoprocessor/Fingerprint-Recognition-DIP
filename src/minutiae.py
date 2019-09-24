@@ -452,6 +452,6 @@ def remove_minutiae(minutiae):
     for minutia in minutiae:
         x, y, CN, O, validity = minutia
         if validity == True:
-            minutia = x, y, CN, np.rad2deg(O), validity
+            minutia = x, y, CN, O, validity
             real_minutiae.append(minutia)
     return real_minutiae
