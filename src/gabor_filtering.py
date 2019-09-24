@@ -119,6 +119,16 @@ def get_frequency_map(img: np.ndarray, block_size: int = 32, improved_freq: bool
     return frequency_map
 
 
+def quantize_val(val, val_list):
+    v = 0
+    tmp = 1e10
+    for i in range(val_list.size):
+        if np.abs(val - val_list[i]) < tmp:
+            v = val_list[i]
+            tmp = np.abs(val - val_list[i])
+    return v
+
+
 def get_orientation_map(image: np.ndarray, block_size: int = 16, sobel_kernel_size: int = 3) -> np.ndarray:
     """
     Estimate the orientation of the ridges in each block
@@ -144,9 +154,8 @@ def get_orientation_map(image: np.ndarray, block_size: int = 16, sobel_kernel_si
                     gxy += gx[h][k]*gy[h][k]
                     gxx += gx[h][k]**2
                     gyy += gy[h][k]**2
-            # TODO improve the orientations
-            # theta = np.pi*0.5+0.5*np.arctan2(2*gxy, gxx-gyy)
-            theta = 0.5*np.arctan2(2*gxy, gxx-gyy)
+            theta = np.rad2deg(0.5*np.arctan2(2*gxy, gxx-gyy))
+            theta = quantize_val(theta, np.arange(-180, 180, 15))
             coherence = np.sqrt((gxx-gyy)**2+4*(gxy**2))/(gxx+gyy+1e-6)
 
             for h in range(i, min(i+block_size, height)):
@@ -156,13 +165,6 @@ def get_orientation_map(image: np.ndarray, block_size: int = 16, sobel_kernel_si
             j += block_size
         i += block_size
         j = 0
-
-    # print ridge orientation
-    # vector_field_img = display_orientation_map(ridge_orientation=orientation,
-    #                                            coherence_map=orientation_coherence,
-    #                                            block_size=block_size,
-    #                                            regularize=True)
-    # utils.display_image(vector_field_img, title="Orientation field")
     return orientation
 
 
@@ -176,7 +178,7 @@ def get_gabor_kernel(kernel_size: int, orientation: float, frequency: float) -> 
     """
     x_sigma = 3
     y_sigma = 3
-
+    orientation = np.deg2rad(orientation)
     kernel = np.empty((kernel_size, kernel_size))
     for i in range(0, kernel_size):
         for j in range(0, kernel_size):
