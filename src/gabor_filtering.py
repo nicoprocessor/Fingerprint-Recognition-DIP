@@ -155,7 +155,7 @@ def get_orientation_map(image: np.ndarray, block_size: int = 16, sobel_kernel_si
                     gxx += gx[h][k]**2
                     gyy += gy[h][k]**2
             theta = np.rad2deg(0.5*np.arctan2(2*gxy, gxx-gyy))
-            theta = quantize_val(theta, np.arange(-180, 180, 15))
+            theta = quantize_val(theta, np.arange(-180, 180, 5))
             coherence = np.sqrt((gxx-gyy)**2+4*(gxy**2))/(gxx+gyy+1e-6)
 
             for h in range(i, min(i+block_size, height)):

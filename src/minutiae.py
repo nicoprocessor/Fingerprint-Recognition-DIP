@@ -450,8 +450,8 @@ def remove_minutiae(minutiae):
     real_minutiae = []
 
     for minutia in minutiae:
-        x, y, CN, O, validity = minutia
+        r, c, CN, O, validity = minutia
         if validity == True:
-            minutia = x, y, CN, O, validity
+            minutia = r, c, CN, O, validity
             real_minutiae.append(minutia)
     return real_minutiae
