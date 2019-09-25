@@ -205,6 +205,35 @@ def print_minutiae2(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
     print_color_image(blank)
 
 
+def print_minutiae3(skeleton: np.ndarray, ridges1, ridges2):
+    """
+    Highlight minutiae points in the fingerprint skeleton
+    :param skeleton: the fingerprint skeleton
+    :param ridges: the ridge map
+    :param b: the blue color channel intensity value
+    :param g: the green color channel intensity value
+    :param r: the red color channel intensity value
+    """
+    height, width = skeleton.shape
+    blank = np.zeros((height, width, 3), np.uint8)
+
+    for h in range(height):
+        for k in range(width):
+            if skeleton[h][k] == 1:
+                blank[h][k] = (255, 255, 255)
+    for (i, j, _, _, validity) in ridges1:
+        for h in range(max(0, i - 1), min(height, i + 2)):
+            for k in range(max(0, j - 1), min(width, j + 2)):
+                if validity:
+                    blank[h][k] = (255, 0, 0)
+    for r in ridges2:
+        for h in range(max(0, int(r[0]) - 1), min(height, int(r[0]) + 2)):
+            for k in range(max(0, int(r[1]) - 1), min(width, int(r[1]) + 2)):
+                if r[4]:
+                    blank[h][k] = (0, 0, 255)
+    print_color_image(blank)
+
+
 #TODO
 def inter_ridge_length(skeleton: np.ndarray, roi) -> float:
     height, width = skeleton.shape
@@ -228,8 +257,7 @@ def same_ridge(minutia1, minutia2, ridge_identification_map):
     return v1 == v2
 
 
-def false_minutiae_removal(skeleton, minutiae, ridge_identification_map):
-    D = 13 # use inter ridge distance or something else
+def false_minutiae_removal(skeleton, minutiae, ridge_identification_map, D):
     height, width = skeleton.shape
     for i in range(len(minutiae)):
         for j in range(i+1, len(minutiae)):
@@ -246,7 +274,7 @@ def false_minutiae_removal(skeleton, minutiae, ridge_identification_map):
                     minutiae[i] = x1, y1, CN1, O1, False
                     minutiae[j] = x2, y2, CN2, O2, False
                 else:
-                    if ((CN1 == 1 and CN2 == 3) or (CN1 == 3 and CN2 == 1)) and dist < 10 and same_ridge(minutia1, minutia2, ridge_identification_map):
+                    if ((CN1 == 1 and CN2 == 3) or (CN1 == 3 and CN2 == 1)) and dist < D and same_ridge(minutia1, minutia2, ridge_identification_map):
                         minutiae[i] = x1, y1, CN1, O1, False
                         minutiae[j] = x2, y2, CN2, O2, False
     return minutiae
@@ -436,8 +464,8 @@ def remove_minutiae(minutiae):
     real_minutiae = []
 
     for minutia in minutiae:
-        x, y, CN, O, validity = minutia
+        r, c, CN, O, validity = minutia
         if validity == True:
-            minutia = x, y, CN, np.rad2deg(O), validity
+            minutia = r, c, CN, O, validity
             real_minutiae.append(minutia)
     return real_minutiae
