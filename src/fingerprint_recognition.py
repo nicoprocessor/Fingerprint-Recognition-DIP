@@ -15,7 +15,7 @@ from utils import get_neighbor_coordinates
 from utils import print_images
 from utils import print_color_image
 from typing import Tuple, Union
-from matching import find_best_transformation
+import matching
 
 import gabor_filtering as gabor
 import fingerprint_enhancement as enhancement
@@ -65,12 +65,11 @@ if __name__ == '__main__':
     minutiae1 = crossing_numbers(processed_img1, ridge_orientation_map1)
     minutiae2 = crossing_numbers(processed_img2, ridge_orientation_map2)
     #print_minutiae(processed_img1, minutiae, 255, 0, 0)
+
     ridge_identification_map1, labels1 = find_lines(processed_img1)
     ridge_identification_map2, labels2 = find_lines(processed_img2)
-    test = np.mean(ridge_frequency1)
-    test = 1/test
-    minutiae1 = false_minutiae_removal(processed_img1, minutiae1, ridge_identification_map1, test-5)
-    minutiae2 = false_minutiae_removal(processed_img2, minutiae2, ridge_identification_map2, test-5)
+    minutiae1 = false_minutiae_removal(processed_img1, minutiae1, ridge_identification_map1)
+    minutiae2 = false_minutiae_removal(processed_img2, minutiae2, ridge_identification_map2)
     minutiae1 = remove_minutiae(minutiae1)
     minutiae2 = remove_minutiae(minutiae2)
     print_minutiae(processed_img1, minutiae1, 255, 0, 0)
@@ -79,3 +78,18 @@ if __name__ == '__main__':
     # res = matching.match_hough(processed_img1, minutiae1, minutiae2)
     #print_minutiae3(processed_img1, minutiae1, tmp)
     print(res)
+
+    # print_minutiae(processed_img1, minutiae1, 255, 0, 0)
+    # print_minutiae(processed_img2, minutiae2, 255, 0, 0)
+
+    # matching.match(processed_img1, minutiae1, processed_img2, minutiae2)
+    best_transform = matching.find_best_transformation(shape=fingerprint1.shape, minutiae_set1=minutiae1, minutiae_set2=minutiae2)
+    print(best_transform)
+
+
+    # print_minutiae(processed_img1, minutiae1, 255, 0, 0)
+    # print_minutiae(processed_img2, minutiae2, 255, 0, 0)
+
+    # matching.match(processed_img1, minutiae1, processed_img2, minutiae2)
+    best_transform = matching.find_best_transformation(shape=fingerprint1.shape, minutiae_set1=minutiae1, minutiae_set2=minutiae2)
+    print(best_transform)

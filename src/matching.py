@@ -7,6 +7,7 @@ __email__ = "nicola.onofri@gmail.com, " \
             "l.bonassi005@studenti.unibs.it"
 
 import numpy as np
+import cv2
 import minutiae
 from utils import print_images
 from utils import print_color_image
@@ -42,6 +43,16 @@ def minutiae_transform(y, x, c, o, minutiae, j):
             xnew = res[0][0]
             ynew = res[1][0]
             minutiae[i] = int(ynew), int(xnew), c, thetai, validity
+def minutiae_transform(x, y, theta, minutiae):
+    for i in range(len(minutiae)):
+        xi, yi, c, thetai, validity = minutiae[i]
+        matrix = [[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]
+        m2 = [[xi-x], [yi-y], [thetai-theta]]
+        res = np.dot(matrix, m2)
+        xnew = res[0][0]
+        ynew = res[1][0]
+        theta_new = res[2][0]
+        minutiae[i] = xnew, ynew, c, theta_new, validity
 
 
 # not tested
@@ -52,7 +63,7 @@ def minutiae_match(I1, I2, r0, theta0):
             xi, yi, ci, thetai, _ = I1[i]
             xj, yj, cj, thetaj, _ = I2[j]
             sd = np.sqrt(((xi-xj)**2)+((yi-yj)**2))
-            dd = min(np.abs(thetai-thetaj), 360 - np.abs(thetai-thetaj))
+            dd = min(np.abs(thetai-thetaj), 360-np.abs(thetai-thetaj))
             if sd < r0 and dd < theta0 and ci == cj:
                 mm_tot += 1
     return mm_tot/(max(len(I1), len(I2)))
@@ -126,7 +137,133 @@ def minutiae_match_hough(I1, I2, r0, theta0):
             yj, xj, cj, thetaj, _ = I2[j]
             sd = np.sqrt(((xi-xj)**2)+((yi-yj)**2))
             dd = min(np.abs(thetai-thetaj), 360 - np.abs(thetai-thetaj))
+            dd = min(np.abs(thetai-thetaj), 360-np.abs(thetai-thetaj))
             if sd < r0 and dd < theta0 and ci == cj:
                 mm_tot += 1
     return mm_tot
 
+
+
+
+def find_best_transformation(shape: np.ndarray, minutiae_set1: np.ndarray, minutiae_set2: np.ndarray):
+    """
+    Hough transform to identify the best transform that fits the second set over the first one
+    :param shape: the shape of the original image
+    :param minutiae_set1: the set to match
+    :param minutiae_set2: the set to transform
+    :return: a tuple containing the best trasformation that fits the first minutiae set to the second one
+    """
+    height, width = shape
+    max_size = np.sqrt(height**2+width**2)*1.6
+    hough_window_size = 5  # neighbor spots in Hough matrix
+    quantized_angles = np.arange(30)
+    quantized_scale = np.arange(15)
+    accumulator = np.zeros(shape=(int(max_size), int(max_size), len(quantized_scale), len(quantized_angles)))
+    counter = 0
+
+    for m1 in minutiae_set1:
+        x1, y1, CN1, alpha, _ = m1
+        for m2 in minutiae_set2:
+            x2, y2, CN2, beta, _ = m2
+            for theta in quantized_angles:
+                if abs(alpha+theta-beta) < 20 and CN1 == CN2:
+                    for scale in quantized_scale:
+                        c, s = np.cos(theta), np.sin(theta)
+                        rotation_matrix = np.array([[c, -s], [s, c]])
+                        deltas = np.array([x2, y2])-(scale//10)*rotation_matrix+np.array([x1, y1])
+
+                        # if deltas[0,0] < 50 and deltas[1,0] < 50:
+                        counter += 1
+                        print("Found possible match! "+str(counter))
+                        accumulator[int(deltas[0, 0]), int(deltas[1, 0]), int(scale), int(theta)] += 3
+
+                        # for x in range(-hough_window_size, hough_window_size):
+                        #     accumulator[deltas[0,0]+x, deltas[1,0], int(scale), int(theta)] += 1
+                        #
+                        # for y in range(-hough_window_size, hough_window_size):
+                        #     accumulator[deltas[0,0], deltas[1,0]+y, int(scale), int(theta)] += 1
+
+    # extract the best
+    best_transform = np.unravel_index(np.argmax(accumulator, axis=None), accumulator.shape)
+    return best_transform
+
+
+def apply_transformation(minutiae: np.ndarray, translation: np.ndarray, theta: float, scale: float):
+    """Perform the affine transformation
+    :param minutiae: the minutiae set that must be rotated
+    :param translation: the translation vector (dx,dy)
+    :param theta: the angle in degrees
+    :param scale: scaling factor
+    :return: the transformed minutiae set
+     """
+
+    transfomed_minutiae = np.copy(minutiae)
+    M = cv2.getRotationMatrix2D((0,0), theta, scale)
+    transfomed_minutiae = cv2.warpAffine(minutiae, M, (w, h))
+
+    translation_matrix = np.float32([[1, 0, 70], [0, 1, 110]])
+    img_translation = cv2.warpAffine(img, translation_matrix, (num_cols, num_rows))
+    return transfomed_minutiae
+
+    return mm_tot/(max(len(I1), len(I2)))
+
+
+def find_best_transformation(shape: np.ndarray, minutiae_set1: np.ndarray, minutiae_set2: np.ndarray):
+    """
+    Hough transform to identify the best transform that fits the second set over the first one
+    :param shape: the shape of the original image
+    :param minutiae_set1: the set to match
+    :param minutiae_set2: the set to transform
+    :return: a tuple containing the best trasformation that fits the first minutiae set to the second one
+    """
+    height, width = shape
+    max_size = np.sqrt(height**2+width**2)*1.6
+    hough_window_size = 5  # neighbor spots in Hough matrix
+    quantized_angles = np.arange(30)
+    quantized_scale = np.arange(15)
+    accumulator = np.zeros(shape=(int(max_size), int(max_size), len(quantized_scale), len(quantized_angles)))
+    counter = 0
+
+    for m1 in minutiae_set1:
+        x1, y1, CN1, alpha, _ = m1
+        for m2 in minutiae_set2:
+            x2, y2, CN2, beta, _ = m2
+            for theta in quantized_angles:
+                if abs(alpha+theta-beta) < 20 and CN1 == CN2:
+                    for scale in quantized_scale:
+                        c, s = np.cos(theta), np.sin(theta)
+                        rotation_matrix = np.array([[c, -s], [s, c]])
+                        deltas = np.array([x2, y2])-(scale//10)*rotation_matrix+np.array([x1, y1])
+
+                        # if deltas[0,0] < 50 and deltas[1,0] < 50:
+                        counter += 1
+                        print("Found possible match! "+str(counter))
+                        accumulator[int(deltas[0, 0]), int(deltas[1, 0]), int(scale), int(theta)] += 3
+
+                        # for x in range(-hough_window_size, hough_window_size):
+                        #     accumulator[deltas[0,0]+x, deltas[1,0], int(scale), int(theta)] += 1
+                        #
+                        # for y in range(-hough_window_size, hough_window_size):
+                        #     accumulator[deltas[0,0], deltas[1,0]+y, int(scale), int(theta)] += 1
+
+    # extract the best
+    best_transform = np.unravel_index(np.argmax(accumulator, axis=None), accumulator.shape)
+    return best_transform
+
+
+def apply_transformation(minutiae: np.ndarray, translation: np.ndarray, theta: float, scale: float):
+    """Perform the affine transformation
+    :param minutiae: the minutiae set that must be rotated
+    :param translation: the translation vector (dx,dy)
+    :param theta: the angle in degrees
+    :param scale: scaling factor
+    :return: the transformed minutiae set
+     """
+
+    transfomed_minutiae = np.copy(minutiae)
+    M = cv2.getRotationMatrix2D((0,0), theta, scale)
+    transfomed_minutiae = cv2.warpAffine(minutiae, M, (w, h))
+
+    translation_matrix = np.float32([[1, 0, 70], [0, 1, 110]])
+    img_translation = cv2.warpAffine(img, translation_matrix, (num_cols, num_rows))
+    return transfomed_minutiae
