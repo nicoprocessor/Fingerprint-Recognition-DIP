@@ -158,7 +158,7 @@ def count_pixels(image: np.ndarray, i: int, j: int, block_size: int = 3) -> int:
 #     return bifurcations
 
 
-def print_minutiae(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
+def print_minutiae(skeleton: np.ndarray, ridges, b: int, g: int, r: int, title):
     """
     Highlight minutiae points in the fingerprint skeleton
     :param skeleton: the fingerprint skeleton
@@ -179,7 +179,7 @@ def print_minutiae(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
             for k in range(max(0, j - 1), min(width, j + 2)):
                 if validity:
                     blank[h][k] = (b, g, r)
-    print_color_image(blank)
+    print_color_image(blank, title)
 
 
 def print_minutiae2(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
@@ -205,7 +205,7 @@ def print_minutiae2(skeleton: np.ndarray, ridges, b: int, g: int, r: int):
     print_color_image(blank)
 
 
-def print_minutiae3(skeleton: np.ndarray, ridges1, ridges2):
+def print_minutiae3(skeleton: np.ndarray, ridges1, ridges2, title):
     """
     Highlight minutiae points in the fingerprint skeleton
     :param skeleton: the fingerprint skeleton
@@ -231,7 +231,7 @@ def print_minutiae3(skeleton: np.ndarray, ridges1, ridges2):
             for k in range(max(0, int(r[1]) - 1), min(width, int(r[1]) + 2)):
                 if r[4]:
                     blank[h][k] = (0, 0, 255)
-    print_color_image(blank)
+    print_color_image(blank, title)
 
 
 #TODO

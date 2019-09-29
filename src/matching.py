@@ -68,7 +68,8 @@ def quantize(val, val_list):
 
 
 def hough_match(set1, set2):
-    scalings = np.array([0.95, 1, 1.05])
+    print("minutiale alignment")
+    scalings = np.array([0.8, 0.95, 1, 1.05, 1.1])
     thetas = np.arange(-90, 90, 5)
     deltas_x = np.arange(-50, 50, 1)
     deltas_y = np.arange(-50, 50, 1)
@@ -79,7 +80,6 @@ def hough_match(set1, set2):
             qy, qx, cn_q, beta, _ = minutiae2
             for i in range(thetas.size):
                 if int(alpha) + thetas[i] == int(beta) and cn_p == cn_q:
-                    print("Attenzione!")
                     for j in range(scalings.size):
                         matrix = np.array([[np.cos(thetas[i]), np.sin(thetas[i])], [-np.sin(thetas[i]), np.cos(thetas[i])]])
                         q = np.array([[qx], [qy]])
@@ -90,17 +90,24 @@ def hough_match(set1, set2):
                         h = quantize(deltax, deltas_x)
                         k = quantize(deltay, deltas_y)
                         if -50 < deltax < 50 and -50 < deltay < 50:
-                            accumulator[j][i][h][k] += 1
+                            for hh in range(max(h-1, 0), min(h+2, deltas_x.size)):
+                                for kk in range(max(k-1, 0), min(k+2, deltas_y.size)):
+                                    if hh == h and kk == k:
+                                        accumulator[j][i][hh][kk] += 3
+                                    accumulator[j][i][hh][kk] += 1
     scale, theta, dx, dy = np.unravel_index(np.argmax(accumulator, axis=None), accumulator.shape)
     return scalings[scale], thetas[theta], deltas_x[dx], deltas_y[dy]
 
 
-def match_hough(img, I1, I2):
+def match_hough(img, I1, I2, I11, I22):
     scale, theta, deltax, deltay = hough_match(I1, I2)
-    minutiae.print_minutiae3(img, I1, I2)
-    minutiae_transform_hough(scale, theta, deltax, deltay, I2)
-    minutiae.print_minutiae3(img, I1, I2)
-    res = minutiae_match_hough(I1, I2, r0=10, theta0=10)
+    # print(scale, theta, deltax, deltay)
+    minutiae.print_minutiae3(img, I11, I22, "before alignment")
+    print("minutiale transformation")
+    minutiae_transform_hough(scale, theta, deltax, deltay, I22)
+    # minutiae_transform_hough(scale, theta, deltax, deltay, I2)
+    minutiae.print_minutiae3(img, I11, I22, "after alignment")
+    res = minutiae_match_hough(I11, I22, r0=20, theta0=15)
     return res
 
 
@@ -118,6 +125,7 @@ def minutiae_transform_hough(scale, theta, deltax, deltay, set):
 
 
 def minutiae_match_hough(I1, I2, r0, theta0):
+    print("calculating score")
     mm_tot = 0
     for i in range(len(I1)):
         for j in range(len(I2)):
@@ -127,5 +135,9 @@ def minutiae_match_hough(I1, I2, r0, theta0):
             dd = min(np.abs(thetai-thetaj), 360 - np.abs(thetai-thetaj))
             if sd < r0 and dd < theta0 and ci == cj:
                 mm_tot += 1
-    return mm_tot
+    res = mm_tot/(max(len(I1), len(I2)))
+    if res > 0.3:
+        return "The given fingerprints match!"
+    else:
+        return "The given fingerprints don't match!"
 

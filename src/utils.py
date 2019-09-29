@@ -239,18 +239,21 @@ def print_images_args(**images):
     plt.show()
 
 
-def print_images(images):
+def print_images(images, titles):
     """
     Display several images in a single plot
     :param images: the images to print
     """
     for i in range(1, len(images)+1):
-        plt.subplot(1, len(images), i)
+        tmp = plt.subplot(1, len(images), i)
+        tmp.set_title(titles[i-1])
         plt.imshow(images[i-1], cmap='gray')
     plt.show()
 
 
-def print_color_image(image):
+def print_color_image(image, title = ""):
     image = image[:, :, ::-1]
+    tmp = plt.subplot(1, 1, 1)
+    tmp.set_title(title)
     plt.imshow(image, cmap='gray')
     plt.show()
