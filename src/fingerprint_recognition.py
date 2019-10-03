@@ -33,6 +33,7 @@ def pre_processing(img: np.ndarray):
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     equalized = clahe.apply(denoised)
     normalized = enhancement.normalize(equalized)
+    # print_images([negated, denoised, normalized])
     print_images([negated, denoised], ["original fingerprint", "denoising"])
     print_images([equalized, normalized], ["equalization", "normalization"])
 
@@ -51,6 +52,11 @@ def pre_processing(img: np.ndarray):
     print_images([image, binarized], ["gabor filtering", "binarization"])
     print_images([thinned], ["thinning"])
     return thinned, ridge_orientation, ridge_frequency
+
+
+# def save_minutiae(minutiae, filename):
+#     """Save minutiae points on an external file"""
+#
 
 
 if __name__ == '__main__':

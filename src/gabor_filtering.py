@@ -67,7 +67,6 @@ def get_frequency_map(img: np.ndarray, block_size: int = 32, improved_freq: bool
     :return: n image with the same size of the original, where in each cell
     is stored the main frequency  of the ridges that belong to that block
     """
-    # TODO convert while loops to for loops
     frequency_map = np.empty(img.shape)
     height, width = img.shape
     i = 0

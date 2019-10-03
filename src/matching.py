@@ -7,43 +7,12 @@ __email__ = "nicola.onofri@gmail.com, " \
             "l.bonassi005@studenti.unibs.it"
 
 import numpy as np
+import cv2
 import minutiae
 from utils import print_images
 from utils import print_color_image
+from utils import rotate_vector
 
-
-def match(img, I1, I2):
-    max_res = 0
-    for i in range(len(I1)):
-        tmp = np.copy(I2)
-        minutia1 = I1[i]
-        y, x, c, o, _ = minutia1
-        for j in range(len(I2)):
-            minutiae_transform(y, x, c, o, tmp, j)
-            # minutiae.print_minutiae3(img, I1, tmp)
-            res = minutiae_match(I1, I2, r0=25, theta0=30)
-            if res > max_res:
-                max_res = res
-    return max_res
-
-
-def minutiae_transform(y, x, c, o, minutiae, j):
-    yi, xi, ci, oi, validity = minutiae[j]
-    dx = xi - x
-    dy = yi - y
-    do = oi - o
-    if c == ci and np.abs(dx) < 25 and np.abs(dy) < 25:
-        for i in range(len(minutiae)):
-            xi, yi, c, thetai, validity = minutiae[i]
-            matrix = np.array([[np.cos(do), -np.sin(do)], [np.sin(do), np.cos(do)]])
-            m2 = np.array([[xi-dx], [yi-dy]])
-            res = matrix @ m2
-            xnew = res[0][0]
-            ynew = res[1][0]
-            minutiae[i] = int(ynew), int(xnew), c, thetai, validity
-
-
-#not tested
 def minutiae_match(I1, I2, r0, theta0):
     mm_tot = 0
     for i in range(len(I1)):
@@ -51,7 +20,7 @@ def minutiae_match(I1, I2, r0, theta0):
             xi, yi, ci, thetai, _ = I1[i]
             xj, yj, cj, thetaj, _ = I2[j]
             sd = np.sqrt(((xi-xj)**2)+((yi-yj)**2))
-            dd = min(np.abs(thetai-thetaj), 360 - np.abs(thetai-thetaj))
+            dd = min(np.abs(thetai-thetaj), 360-np.abs(thetai-thetaj))
             if sd < r0 and dd < theta0 and ci == cj:
                 mm_tot += 1
     return mm_tot/(max(len(I1), len(I2)))
@@ -133,6 +102,7 @@ def minutiae_match_hough(I1, I2, r0, theta0):
             yj, xj, cj, thetaj, _ = I2[j]
             sd = np.sqrt(((xi-xj)**2)+((yi-yj)**2))
             dd = min(np.abs(thetai-thetaj), 360 - np.abs(thetai-thetaj))
+            dd = min(np.abs(thetai-thetaj), 360-np.abs(thetai-thetaj))
             if sd < r0 and dd < theta0 and ci == cj:
                 mm_tot += 1
     res = mm_tot/(max(len(I1), len(I2)))
@@ -140,4 +110,3 @@ def minutiae_match_hough(I1, I2, r0, theta0):
         return "The given fingerprints match!"
     else:
         return "The given fingerprints don't match!"
-

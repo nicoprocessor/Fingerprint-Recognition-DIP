@@ -279,6 +279,20 @@ def false_minutiae_removal(skeleton, minutiae, ridge_identification_map, D):
                         minutiae[j] = x2, y2, CN2, O2, False
     return minutiae
 
+def remove_minutiae(minutiae):
+    """
+
+    :param minutiae:
+    :return:
+    """
+    real_minutiae = []
+
+    for minutia in minutiae:
+        x, y, CN, O, validity = minutia
+        if validity == True:
+            real_minutiae.append(minutia)
+    return real_minutiae
+
 
 # def false_minutiae_removal(skeleton: np.ndarray,
 #                            ridge_map: Dict[Coordinate, int],
