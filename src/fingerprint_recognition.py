@@ -29,13 +29,12 @@ def pre_processing(img: np.ndarray):
     """
     # image enhancement
     negated = cv2.bitwise_not(img)
+    print_images([negated], ["original fingerprint"])
     denoised = cv2.fastNlMeansDenoising(negated, None, 15)
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     equalized = clahe.apply(denoised)
     normalized = enhancement.normalize(equalized)
-    # print_images([negated, denoised, normalized])
-    print_images([negated, denoised], ["original fingerprint", "denoising"])
-    print_images([equalized, normalized], ["equalization", "normalization"])
+
 
     # gabor filtering
     ridge_orientation = gabor.get_orientation_map(normalized)
@@ -49,19 +48,44 @@ def pre_processing(img: np.ndarray):
     image = np.where(roi == 1.0, image, 1.0)
     binarized = enhancement.binarization(image)
     thinned = enhancement.ridge_thinning(binarized)
-    print_images([image, binarized], ["gabor filtering", "binarization"])
-    print_images([thinned], ["thinning"])
+    print_images([thinned], ["thinned fingerprint"])
     return thinned, ridge_orientation, ridge_frequency
 
 
-# def save_minutiae(minutiae, filename):
-#     """Save minutiae points on an external file"""
-#
+def get_freq(ridge_frequency1, ridge_frequency2):
+    freq1 = 1 / np.mean(ridge_frequency1)
+    freq2 = 1 / np.mean(ridge_frequency2)
+    return freq1, freq2
+
+
+def pre_processing2(img: np.ndarray):
+    """
+    no prints
+    """
+    # image enhancement
+    negated = cv2.bitwise_not(img)
+    denoised = cv2.fastNlMeansDenoising(negated, None, 15)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    equalized = clahe.apply(denoised)
+    normalized = enhancement.normalize(equalized)
+    # gabor filtering
+    ridge_orientation = gabor.get_orientation_map(normalized)
+    ridge_frequency = gabor.get_frequency_map(normalized)
+    a = np.mean(ridge_frequency)
+    roi = enhancement.roi_mask(normalized)
+    image = gabor.gabor_filter(normalized, ridge_orientation, ridge_frequency,
+                               block_size=32, gabor_kernel_size=16)
+
+    # extract ROI
+    image = np.where(roi == 1.0, image, 1.0)
+    binarized = enhancement.binarization(image)
+    thinned = enhancement.ridge_thinning(binarized)
+    return thinned, ridge_orientation, ridge_frequency
 
 
 if __name__ == '__main__':
-    fingerprint1 = load_image(filename="indice2.jpg", cv2_read_param=0)
-    fingerprint2 = load_image(filename="indice3.jpg", cv2_read_param=0)
+    fingerprint1 = load_image(filename="indice_dx_nico_1.jpg", cv2_read_param=0)
+    fingerprint2 = load_image(filename="pollice_dx_luigi_2.jpg", cv2_read_param=0)
     processed_img1, ridge_orientation_map1, ridge_frequency1 = pre_processing(fingerprint1)
     processed_img2, ridge_orientation_map2, ridge_frequency2 = pre_processing(fingerprint2)
 
@@ -71,19 +95,18 @@ if __name__ == '__main__':
     minutiae22 = minutiae2.copy()
     ridge_identification_map1, labels1 = find_lines(processed_img1)
     ridge_identification_map2, labels2 = find_lines(processed_img2)
-    test = np.mean(ridge_frequency1)
-    test = 1/test
-    minutiae1 = false_minutiae_removal(processed_img1, minutiae1, ridge_identification_map1, test/1.5)
-    minutiae2 = false_minutiae_removal(processed_img2, minutiae2, ridge_identification_map2, test/1.5)
+    freq1, freq2 = get_freq(ridge_frequency1, ridge_frequency2)
+    minutiae1 = false_minutiae_removal(processed_img1, minutiae1, ridge_identification_map1, freq1/1.5)
+    minutiae2 = false_minutiae_removal(processed_img2, minutiae2, ridge_identification_map2, freq2/1.5)
     minutiae1 = remove_minutiae(minutiae1)
     minutiae2 = remove_minutiae(minutiae2)
-    minutiae11 = false_minutiae_removal(processed_img1, minutiae11, ridge_identification_map1, test)
-    minutiae22 = false_minutiae_removal(processed_img2, minutiae22, ridge_identification_map2, test)
+    minutiae11 = false_minutiae_removal(processed_img1, minutiae11, ridge_identification_map1, freq1)
+    minutiae22 = false_minutiae_removal(processed_img2, minutiae22, ridge_identification_map2, freq2)
     minutiae11 = remove_minutiae(minutiae11)
     minutiae22 = remove_minutiae(minutiae22)
     print_minutiae(processed_img1, minutiae1, 255, 0, 0, "minutiae found")
-    print_minutiae(processed_img2, minutiae2, 255, 0, 0, "minutiae found")
     print_minutiae(processed_img1, minutiae11, 0, 255, 0, "false minutiae removed")
+    print_minutiae(processed_img2, minutiae2, 255, 0, 0, "minutiae found")
     print_minutiae(processed_img2, minutiae22, 0, 255, 0, "false minutiae removed")
-    msg = matching.match_hough(processed_img1, minutiae1, minutiae2, minutiae11, minutiae22)
+    msg = matching.match(processed_img1, processed_img2, minutiae1, minutiae2, minutiae11, minutiae22)
     print(msg)

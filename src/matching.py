@@ -13,17 +13,22 @@ from utils import print_images
 from utils import print_color_image
 from utils import rotate_vector
 
-def minutiae_match(I1, I2, r0, theta0):
-    mm_tot = 0
-    for i in range(len(I1)):
-        for j in range(len(I2)):
-            xi, yi, ci, thetai, _ = I1[i]
-            xj, yj, cj, thetaj, _ = I2[j]
-            sd = np.sqrt(((xi-xj)**2)+((yi-yj)**2))
-            dd = min(np.abs(thetai-thetaj), 360-np.abs(thetai-thetaj))
-            if sd < r0 and dd < theta0 and ci == cj:
-                mm_tot += 1
-    return mm_tot/(max(len(I1), len(I2)))
+
+def match(img1, img2, I1, I2, I11, I22):
+    print("matching")
+    res1, new_I22 = match_hough(img1, I1, I2, I11, I22)
+    res2, new_I11 = match_hough(img2, I2, I1, I22, I11)
+    if res1 > res2:
+        minutiae.print_minutiae3(img1, I11, I22, "before alignment")
+        minutiae.print_minutiae3(img1, I11, new_I22, "after alignment")
+    else:
+        minutiae.print_minutiae3(img2, I22, I11, "before alignment")
+        minutiae.print_minutiae3(img2, I22, new_I11, "after alignment")
+    res = max(res1, res2)
+    if res >= 0.4:
+        return "Fingerprint match!"
+    else:
+        return "Fingerprint miss!"
 
 
 def quantize(val, val_list):
@@ -37,11 +42,10 @@ def quantize(val, val_list):
 
 
 def hough_match(set1, set2):
-    print("minutiale alignment")
     scalings = np.array([0.8, 0.95, 1, 1.05, 1.1])
     thetas = np.arange(-90, 90, 5)
-    deltas_x = np.arange(-50, 50, 1)
-    deltas_y = np.arange(-50, 50, 1)
+    deltas_x = np.arange(-40, 40, 1)
+    deltas_y = np.arange(-40, 40, 1)
     accumulator = np.zeros((scalings.size, thetas.size, deltas_x.size, deltas_y.size))
     for minutiae1 in set1:
         for minutiae2 in set2:
@@ -58,7 +62,7 @@ def hough_match(set1, set2):
                         deltay = res[1][0]
                         h = quantize(deltax, deltas_x)
                         k = quantize(deltay, deltas_y)
-                        if -50 < deltax < 50 and -50 < deltay < 50:
+                        if -40 < deltax < 40 and -40 < deltay < 40:
                             for hh in range(max(h-1, 0), min(h+2, deltas_x.size)):
                                 for kk in range(max(k-1, 0), min(k+2, deltas_y.size)):
                                     if hh == h and kk == k:
@@ -70,18 +74,14 @@ def hough_match(set1, set2):
 
 def match_hough(img, I1, I2, I11, I22):
     scale, theta, deltax, deltay = hough_match(I1, I2)
-    # print(scale, theta, deltax, deltay)
-    minutiae.print_minutiae3(img, I11, I22, "before alignment")
-    print("minutiale transformation")
-    minutiae_transform_hough(scale, theta, deltax, deltay, I22)
-    # minutiae_transform_hough(scale, theta, deltax, deltay, I2)
-    minutiae.print_minutiae3(img, I11, I22, "after alignment")
-    res = minutiae_match_hough(I11, I22, r0=20, theta0=15)
-    return res
+    new_I22 = minutiae_transform_hough(scale, theta, deltax, deltay, I22)
+    res = minutiae_match_hough(I11, new_I22, r0=25, theta0=20)
+    return res, new_I22
 
 
 def minutiae_transform_hough(scale, theta, deltax, deltay, set):
-    for i in range(len(set)):
+    new_set = set.copy()
+    for i in range(len(new_set)):
         y, x, cn, alpha, validity = set[i]
         matrix = np.array([[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]])
         xy = np.array([[x], [y]])
@@ -90,11 +90,11 @@ def minutiae_transform_hough(scale, theta, deltax, deltay, set):
         res = res - dxy
         xnew = int(res[0][0])
         ynew = int(res[1][0])
-        set[i] = ynew, xnew, cn, alpha, validity
+        new_set[i] = ynew, xnew, cn, alpha, validity
+    return new_set
 
 
 def minutiae_match_hough(I1, I2, r0, theta0):
-    print("calculating score")
     mm_tot = 0
     for i in range(len(I1)):
         for j in range(len(I2)):
@@ -106,7 +106,7 @@ def minutiae_match_hough(I1, I2, r0, theta0):
             if sd < r0 and dd < theta0 and ci == cj:
                 mm_tot += 1
     res = mm_tot/(max(len(I1), len(I2)))
-    if res > 0.3:
-        return "The given fingerprints match!"
-    else:
-        return "The given fingerprints don't match!"
+    if res > 1.0:
+        res = 1.0
+    return res
+
