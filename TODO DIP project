@@ -1,9 +1,0 @@
-TODO DIP project
-
-1) Find suitable dataset (x)
-2)  Luigi:
-		-> Image Enhancement
-	Nicola:
-		-> ROI extraction
-	Luigi & Nicola:
-		-> Ridge Flow Estimation (theta)
