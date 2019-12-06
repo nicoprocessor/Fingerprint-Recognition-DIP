@@ -91,7 +91,7 @@ if __name__ == '__main__':
     minutiae1 = open("../res/minutiae_indice_dx_luigi_1", "rb")
     minutiae1 = pickle.load(minutiae1)
 
-    minutiae2 = open("../res/minutiae_indice_dx_nico_2", "rb")
+    minutiae2 = open("../res/minutiae_indice_dx_luigi_2", "rb")
     minutiae2 = pickle.load(minutiae2)
 
     minutiae1, minutiae11 = minutiae1[0], minutiae1[1]

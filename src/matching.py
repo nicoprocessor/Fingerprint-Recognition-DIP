@@ -33,9 +33,9 @@ def quantize(val, val_list):
 
 def hough_match(set1, set2):
     scalings = np.array([0.8, 0.95, 1, 1.05, 1.1])
-    thetas = np.arange(-90, 90, 5)
-    deltas_x = np.arange(-40, 40, 1)
-    deltas_y = np.arange(-40, 40, 1)
+    thetas = np.arange(-90, 90, 15)
+    deltas_x = np.arange(-40, 40, 5)
+    deltas_y = np.arange(-40, 40, 5)
     accumulator = np.zeros((scalings.size, thetas.size, deltas_x.size, deltas_y.size))
     for minutiae1 in set1:
         for minutiae2 in set2:
@@ -91,7 +91,7 @@ def minutiae_match_hough(I1, I2, r0, theta0):
             yi, xi, ci, thetai, _ = I1[i]
             yj, xj, cj, thetaj, _ = I2[j]
             sd = np.sqrt(((xi-xj)**2)+((yi-yj)**2))
-            dd = min(np.abs(thetai-thetaj), 360 - np.abs(thetai-thetaj))
+            #dd = min(np.abs(thetai-thetaj), 360 - np.abs(thetai-thetaj))
             dd = min(np.abs(thetai-thetaj), 360-np.abs(thetai-thetaj))
             if sd < r0 and dd < theta0 and ci == cj:
                 mm_tot += 1
