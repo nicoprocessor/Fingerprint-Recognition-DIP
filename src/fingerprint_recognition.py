@@ -20,6 +20,7 @@ import matching
 
 import gabor_filtering as gabor
 import fingerprint_enhancement as enhancement
+import pickle
 
 
 def pre_processing(img: np.ndarray):
@@ -30,14 +31,14 @@ def pre_processing(img: np.ndarray):
     """
     # image enhancement
     negated = cv2.bitwise_not(img)
-    print_images([negated], ["original fingerprint"])
+    #print_images([negated], ["original fingerprint"])
     denoised = cv2.fastNlMeansDenoising(negated, None, 15)
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     equalized = clahe.apply(denoised)
     normalized = enhancement.normalize(equalized)
 
     # gabor filtering
-    print("Ora faccio Gabor...")
+    #print("Ora faccio Gabor...")
     ridge_orientation = gabor.get_orientation_map(normalized)
     ridge_frequency = gabor.get_frequency_map(normalized)
     a = np.mean(ridge_frequency)
@@ -49,7 +50,7 @@ def pre_processing(img: np.ndarray):
     image = np.where(roi == 1.0, image, 1.0)
     binarized = enhancement.binarization(image)
     thinned = enhancement.ridge_thinning(binarized)
-    print_images([thinned], ["thinned fingerprint"])
+    #print_images([thinned], ["thinned fingerprint"])
     return thinned, ridge_orientation, ridge_frequency
 
 
@@ -85,29 +86,18 @@ def pre_processing2(img: np.ndarray):
 
 
 if __name__ == '__main__':
-    # Non so se bastino queste informazioni, ma è un punto di partenza
-    minutiae_dict = {}
-    processed_imgs = []
 
-    # ciclo for per processare e salvare tutte le immagini nella cartella
-    for i in range(10):
-        # dovremmo trovare un modo per assegnare un id univoco per poter poi risalire ad ogni impronta, almeno sapere
-        # se stiamo confrontando un pollice con un indice (serve?)
-        fingerprint = load_image(filename="indice_dx_nico_1.jpg", cv2_read_param=0)
-        processed_img, ridge_orientation_map, ridge_frequency = pre_processing(fingerprint)
-        processed_imgs.append(processed_img)
 
-        minutiae = crossing_numbers(processed_img, ridge_orientation_map)
-        minutiae_tuned = minutiae.copy()
-        ridge_identification_map, labels = find_lines(processed_img)
-        freq = 1/np.mean(ridge_frequency)
+    minutiae1 = open("../res/minutiae_indice_dx_luigi_1", "rb")
+    minutiae1 = pickle.load(minutiae1)
 
-        minutiae_tuned = false_minutiae_removal(processed_img, minutiae_tuned, ridge_identification_map, freq1/1.5)
-        minutiae_tuned_removed = remove_minutiae(minutiae_tuned)
-        minutiae_normal = false_minutiae_removal(processed_img, minutiae, ridge_identification_map1, freq1)
-        minutiae_normal_removed = remove_minutiae(minutiae_normal)
-        print_minutiae(processed_img, minutiae_tuned_removed, 255, 0, 0, "minutiae found")
-        print_minutiae(processed_img, minutiae_normal_removed, 0, 255, 0, "false minutiae removed")
+    minutiae2 = open("../res/minutiae_indice_dx_nico_2", "rb")
+    minutiae2 = pickle.load(minutiae2)
+
+    minutiae1, minutiae11 = minutiae1[0], minutiae1[1]
+
+    minutiae2, minutiae22 = minutiae2[0], minutiae2[1]
+
 
     # poi bisogna fare il matching
     # ho pensato che un modo per visualizzare quanto classifica bene l'algoritmo potremmo salvare con quali
@@ -140,5 +130,5 @@ if __name__ == '__main__':
     # print_minutiae(processed_img2, minutiae22, 0, 255, 0, "false minutiae removed")
 
     # matching
-    msg = matching.match(processed_img1, processed_img2, minutiae1, minutiae2, minutiae11, minutiae22)
+    msg = matching.match(minutiae1, minutiae2, minutiae11, minutiae22)
     print(msg)

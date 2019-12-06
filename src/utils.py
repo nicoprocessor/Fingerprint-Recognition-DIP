@@ -12,10 +12,20 @@ from pathlib import Path
 from pathlib import PurePath
 from typing import Tuple, List, Union, Dict, Any
 import matplotlib.pyplot as plt
+import pickle
+
 
 Coordinate = Tuple[int, int]
 Scalar = Union[int, float, np.float32]
 Color = Tuple[np.uint8, np.uint8, np.uint8]
+
+
+
+
+def save(object, name):
+    file = open(name, "wb")
+    pickle.dump(object, file)
+    file.close()
 
 
 def lerp_color(start: Color = (0, 0, 0), end: Color = (255, 255, 255),

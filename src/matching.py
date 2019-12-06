@@ -14,21 +14,11 @@ from utils import print_color_image
 from utils import rotate_vector
 
 
-def match(img1, img2, I1, I2, I11, I22):
-    print("matching")
-    res1, new_I22 = match_hough(img1, I1, I2, I11, I22)
-    res2, new_I11 = match_hough(img2, I2, I1, I22, I11)
-    if res1 > res2:
-        minutiae.print_minutiae3(img1, I11, I22, "before alignment")
-        minutiae.print_minutiae3(img1, I11, new_I22, "after alignment")
-    else:
-        minutiae.print_minutiae3(img2, I22, I11, "before alignment")
-        minutiae.print_minutiae3(img2, I22, new_I11, "after alignment")
+def match(I1, I2, I11, I22):
+    res1, new_I22 = match_hough(I1, I2, I11, I22)
+    res2, new_I11 = match_hough(I2, I1, I22, I11)
     res = max(res1, res2)
-    if res >= 0.4:
-        return "Fingerprint match!"
-    else:
-        return "Fingerprint miss!"
+    return res
 
 
 def quantize(val, val_list):
@@ -72,7 +62,7 @@ def hough_match(set1, set2):
     return scalings[scale], thetas[theta], deltas_x[dx], deltas_y[dy]
 
 
-def match_hough(img, I1, I2, I11, I22):
+def match_hough(I1, I2, I11, I22):
     scale, theta, deltax, deltay = hough_match(I1, I2)
     new_I22 = minutiae_transform_hough(scale, theta, deltax, deltay, I22)
     res = minutiae_match_hough(I11, new_I22, r0=25, theta0=20)
