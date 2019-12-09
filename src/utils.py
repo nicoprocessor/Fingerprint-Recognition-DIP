@@ -20,8 +20,6 @@ Scalar = Union[int, float, np.float32]
 Color = Tuple[np.uint8, np.uint8, np.uint8]
 
 
-
-
 def save(object, name):
     file = open(name, "wb")
     pickle.dump(object, file)

@@ -5,6 +5,8 @@
 
 # Dataset
 SOCOFing/
+*dataset/
+*.db
 *.BMP
 *.png
 *.jpg
