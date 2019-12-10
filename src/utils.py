@@ -20,10 +20,14 @@ Scalar = Union[int, float, np.float32]
 Color = Tuple[np.uint8, np.uint8, np.uint8]
 
 
-def save(object, name):
-    file = open(name, "wb")
-    pickle.dump(object, file)
-    file.close()
+def save(obj, name):
+    """
+    Save an object to a file
+    :param obj: the object to save
+    :param name: the destination file
+    """
+    with open(name, 'wb') as f:
+        pickle.dump(obj, f)
 
 
 def lerp_color(start: Color = (0, 0, 0), end: Color = (255, 255, 255),

@@ -397,7 +397,7 @@ def remove_minutiae(minutiae):
 #     return bifurcations, terminations, false_bifurcations, false_teminations, bifurcations_image, terminations_image
 #
 #
-# # TODO test
+# # TODO dst
 # def false_terminations_removal(height: int, width: int,
 #                                terminations: List[Coordinate],
 #                                terminations_image: np.ndarray,

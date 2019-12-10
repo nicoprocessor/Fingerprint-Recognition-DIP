@@ -9,6 +9,7 @@ __email__ = "nicola.onofri@gmail.com, " \
 import math
 import random
 import re
+import time
 from pathlib import Path
 from typing import List, Tuple, Any
 from scipy.spatial.distance import hamming
@@ -23,7 +24,9 @@ Minutia = Tuple[Any, Any, Any, Any, Any]
 # global paths
 dataset_path = Path.cwd().parent/'res'/'CASIA-Fingerprint'
 minutiae_path = Path.cwd().parent/'res'/'minutiae_dataset'
-results_path = Path.cwd().parent/'res'/'scores'
+results_path = Path.cwd().parent/'res'/'dst'
+seed = 101
+random.seed(seed)
 
 
 def process_individual_fingerprint_given_path(fingerprint_id: str):
@@ -83,14 +86,12 @@ def process_fingerprint(fingerprint: np.ndarray) -> Tuple[List[Minutia], List[Mi
     return minutiae_normal_removed, minutiae_tuned_removed
 
 
-def sample_fingerprint_dataset(n, seed=None):
+def sample_fingerprint_dataset(n):
     """
     Choose n fingerprint randomly from the whole dataset,
     process them and save the result as a pickle dump reusable file
     :param n: the size of the sampled dataset
-    :param seed: random number generator seed
     """
-    random.seed(seed)
     fingerprint_dataset_paths = [p for p in dataset_path.rglob('*') if p.suffix == '.bmp']
     print("Original dataset size: "+str(len(fingerprint_dataset_paths)))
     # pprint.pprint(fingerprint_dataset_paths)
@@ -113,16 +114,14 @@ def sample_fingerprint_dataset(n, seed=None):
                  '../res/minutiae_dataset/'+fingerprint_id_sample)
 
 
-def positive_negative_split_sample(size: int, positives_percentage: float = 0.5, seed=None) -> \
+def positive_negative_split_sample(size: int, positives_percentage: float = 0.5) -> \
         List[Tuple[Minutia, Minutia]]:
     """
 
     :param size:
     :param positives_percentage:
-    :param seed:
     :return:
     """
-    random.seed(seed)
     testset = []
     neg_samples_1, neg_samples_2 = [], []
     pos_samples_1, pos_samples_2 = [], []
@@ -175,11 +174,33 @@ def positive_negative_split_sample(size: int, positives_percentage: float = 0.5,
     testset += zip(neg_samples_1, neg_samples_2)
     return testset
 
-def eval_performance():
-    pass
+
+def eval_performance(y_true, y_pred):
+    """
+
+    :param y_true:
+    :param y_pred:
+    :return:
+    """
+    h = hamming(y_pred, y_true)
+    precision, recall, f_score, support = precision_recall_fscore_support(y_true, y_pred)
+    cm = confusion_matrix(y_true, y_pred)
+    # tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+
+    print("Hamming distance: {}\n"
+          "Precision: {}\n"
+          "Recall: {}\n"
+          "Confusion Matrix:\n{}".format(h, precision, recall, cm))
 
 
 def plot_roc(y_true, y_pred, threshold):
+    """
+
+    :param y_true:
+    :param y_pred:
+    :param threshold:
+    :return:
+    """
     auc = roc_auc_score(y_true, y_pred)
     fpr, tpr, _ = roc_curve(y_true, y_pred)
 
@@ -197,16 +218,24 @@ def plot_roc(y_true, y_pred, threshold):
     plt.grid(True)
     plt.show()
 
-# TODO plots & a function to inject some comparisons inside the test_set
+
+def load_results(thresh, positive_perc, test_size, random_seed):
+    filepath = results_path/"{}_{}_{}_{}".format(int(thresh*10), int(positive_perc*10), test_size, random_seed)
+    print("Loading: " + str(filepath))
+
+    with open(filepath, 'rb') as file:
+        res = pickle.load(file)
+    return res
+
 
 if __name__ == '__main__':
     # Call this when you want to process new fingerprints (it may take some time)
-    # sample_fingerprint_dataset(50, seed=101)
+    # sample_fingerprint_dataset(50)
 
     positive_percentage = 0.3
-    test_set_size = 100
+    test_set_size = 50
 
-    test_set = positive_negative_split_sample(size=test_set_size, positives_percentage=positive_percentage, seed=101)
+    test_set = positive_negative_split_sample(size=test_set_size, positives_percentage=positive_percentage)
     positives = math.floor(positive_percentage*test_set_size)
     y_true = np.array([1]*positives+[0]*(len(test_set)-positives), dtype=np.uint8)
 
@@ -215,7 +244,8 @@ if __name__ == '__main__':
     y_pred = np.zeros(y_true.shape, dtype=np.uint8)
     threshold = 0.5
 
-    print("{:>12}{:>12}{:>12}{:>9}{:>10}".format("Sample #1", "Sample #2", "Expected", "Actual", "Score"))
+    start = time.perf_counter()
+
     for k, test in enumerate(test_set):
         id_1, m_1, m_tuned_1 = test[0][0], test[0][1], test[0][2]
         id_2, m_2, m_tuned_2 = test[1][0], test[1][1], test[1][2]
@@ -225,16 +255,22 @@ if __name__ == '__main__':
         if score >= threshold:
             y_pred[k] = 1
 
-        print("{:>12}{:>12}{:>9}{:>9}{:>12}".format(id_1, id_2, str(y_true[k]),
-                                                    str(y_pred[k]), str(round(score, 3))))
+        print("{:<4} - {:>12}{:>12}{:>9}{:>9}{:>12}".format(k, id_1, id_2, str(y_true[k]),
+                                                            str(y_pred[k]), str(round(score, 3))))
 
-    # summarized results
-    h = hamming(y_pred, y_true)
-    precision, recall, f_score, support = precision_recall_fscore_support(y_true, y_pred)
-    cm = confusion_matrix(y_true, y_pred)
-    # tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+    # save results
+    dst_path = results_path/"{}_{}_{}_{}".format(int(threshold*10), int(positive_percentage*10), test_set_size, seed)
+    save(obj=(y_true, y_pred), name=str(dst_path))
 
-    print("Hamming distance: {}\n"
-          "Precision: {}\n"
-          "Recall: {}\n"
-          "Confusion Matrix: {}".format(h, precision, recall, cm))
+    # Execution performance
+    end = time.perf_counter()
+    elapsed = end-start
+    print("\nTotal execution time: {}s\n"
+          "Match execution time: {}s/match".format(elapsed, (elapsed/test_set_size)))
+
+    # Load previously computed result
+    # y_true, y_pred = load_results(thresh=threshold, positive_perc=positive_percentage,
+    #                               test_size=test_set_size, random_seed=seed)
+
+    eval_performance(y_true, y_pred)
+    plot_roc(y_true, y_pred, threshold) # TODO fix
