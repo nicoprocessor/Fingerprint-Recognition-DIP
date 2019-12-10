@@ -6,25 +6,24 @@ __license__ = "GPL"
 __email__ = "nicola.onofri@gmail.com, " \
             "l.bonassi005@studenti.unibs.it"
 
-import pandas as pd
-import re
-import pickle
-import random
 import math
-import pprint
+import random
+import re
 from pathlib import Path
-from utils import load_image
-from utils import save
-from fingerprint_recognition import *
 from typing import List, Tuple, Any
-
-# from sklearn.metrics import precision_recall_fscore_support
+from scipy.spatial.distance import hamming
+import matplotlib.pyplot as plt
+from sklearn.metrics import precision_recall_fscore_support, roc_auc_score, roc_curve
+from sklearn.metrics import confusion_matrix
+from fingerprint_recognition import *
+from utils import save
 
 Minutia = Tuple[Any, Any, Any, Any, Any]
 
 # global paths
 dataset_path = Path.cwd().parent/'res'/'CASIA-Fingerprint'
 minutiae_path = Path.cwd().parent/'res'/'minutiae_dataset'
+results_path = Path.cwd().parent/'res'/'scores'
 
 
 def process_individual_fingerprint_given_path(fingerprint_id: str):
@@ -176,6 +175,27 @@ def positive_negative_split_sample(size: int, positives_percentage: float = 0.5,
     testset += zip(neg_samples_1, neg_samples_2)
     return testset
 
+def eval_performance():
+    pass
+
+
+def plot_roc(y_true, y_pred, threshold):
+    auc = roc_auc_score(y_true, y_pred)
+    fpr, tpr, _ = roc_curve(y_true, y_pred)
+
+    plt.figure()
+    lw = 2
+    plt.plot(fpr, tpr, color='darkorange',
+             lw=lw, label='ROC curve (area = {0:.2f})'.format(auc))
+    plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver operating characteristic example, threshold: {}'.format(threshold))
+    plt.legend(loc="lower right")
+    plt.grid(True)
+    plt.show()
 
 # TODO plots & a function to inject some comparisons inside the test_set
 
@@ -188,11 +208,11 @@ if __name__ == '__main__':
 
     test_set = positive_negative_split_sample(size=test_set_size, positives_percentage=positive_percentage, seed=101)
     positives = math.floor(positive_percentage*test_set_size)
-    expected_outcomes = np.array([1]*positives+[0]*(len(test_set)-positives), dtype=np.uint8)
+    y_true = np.array([1]*positives+[0]*(len(test_set)-positives), dtype=np.uint8)
 
     # fingerprint matching
-    scores = np.zeros(expected_outcomes.shape, dtype=np.float16)
-    actual_outcomes = np.zeros(expected_outcomes.shape, dtype=np.uint8)
+    scores = np.zeros(y_true.shape, dtype=np.float16)
+    y_pred = np.zeros(y_true.shape, dtype=np.uint8)
     threshold = 0.5
 
     print("{:>12}{:>12}{:>12}{:>9}{:>10}".format("Sample #1", "Sample #2", "Expected", "Actual", "Score"))
@@ -203,9 +223,18 @@ if __name__ == '__main__':
         score = matching.match(m_1, m_2, m_tuned_1, m_tuned_2)
         scores[k] = score
         if score >= threshold:
-            actual_outcomes[k] = 1
+            y_pred[k] = 1
 
-        print("{:>12}{:>12}{:>9}{:>9}{:>12}".format(id_1, id_2, str(expected_outcomes[k]),
-                                                    str(actual_outcomes[k]), str(round(score, 3))))
+        print("{:>12}{:>12}{:>9}{:>9}{:>12}".format(id_1, id_2, str(y_true[k]),
+                                                    str(y_pred[k]), str(round(score, 3))))
 
     # summarized results
+    h = hamming(y_pred, y_true)
+    precision, recall, f_score, support = precision_recall_fscore_support(y_true, y_pred)
+    cm = confusion_matrix(y_true, y_pred)
+    # tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+
+    print("Hamming distance: {}\n"
+          "Precision: {}\n"
+          "Recall: {}\n"
+          "Confusion Matrix: {}".format(h, precision, recall, cm))
