@@ -14,7 +14,6 @@ from typing import Tuple, List, Union, Dict, Any
 import matplotlib.pyplot as plt
 import pickle
 
-
 Coordinate = Tuple[int, int]
 Scalar = Union[int, float, np.float32]
 Color = Tuple[np.uint8, np.uint8, np.uint8]
@@ -45,6 +44,18 @@ def lerp_color(start: Color = (0, 0, 0), end: Color = (255, 255, 255),
     return lerp_r, lerp_g, lerp_b
 
 
+def frange(start, stop, step):
+    """
+    Floating point range
+    :param start: starting value
+    :param stop: end value
+    :param step: float step
+    """
+    while start < stop:
+        yield start
+        start += step
+
+
 def inclusive_range(start: Scalar, stop: Scalar, step: Scalar = 1):
     """
     Like a normal range, but with inclusive end
@@ -63,10 +74,26 @@ def inclusive_range(start: Scalar, stop: Scalar, step: Scalar = 1):
 
 def rotate_vector(vec: np.ndarray, theta: float) -> np.ndarray:
     """
-    Rotate a vector anticlockwise direction, using affine transformations
-    :param vec: the vector to be rotated
-    :param theta: the rotation angle in radians
-    :return: the rotated vector
+    Rotate
+    a
+    vector
+    anticlockwise
+    direction, using
+    affine
+    transformations
+    :param
+    vec: the
+    vector
+    to
+    be
+    rotated
+    :param
+    theta: the
+    rotation
+    angle in radians
+    :return: the
+    rotated
+    vector
     """
     c, s = np.cos(theta), np.sin(theta)
     affine_rotation_matrix = np.array([[c, -s, 0.0],
@@ -79,10 +106,25 @@ def rotate_vector(vec: np.ndarray, theta: float) -> np.ndarray:
 
 def translate_vector(vec: np.ndarray, translation_vector: np.ndarray) -> np.ndarray:
     """
-    Translate a vector using affine transformations
-    :param vec: the vector to be translated
-    :param translation_vector: the translation vector
-    :return: the translated vector
+    Translate
+    a
+    vector
+    using
+    affine
+    transformations
+    :param
+    vec: the
+    vector
+    to
+    be
+    translated
+    :param
+    translation_vector: the
+    translation
+    vector
+    :return: the
+    translated
+    vector
     """
     affine_translation_matrix = np.array([[1.0, 0.0, translation_vector[0]],
                                           [0.0, 1.0, translation_vector[1]],
@@ -93,34 +135,56 @@ def translate_vector(vec: np.ndarray, translation_vector: np.ndarray) -> np.ndar
     return dst[:-1]
 
 
-def symmetrical_wrt_center_point(symmetry_origin: np.ndarray, point: np.ndarray) -> np.ndarray:
-    """
-    Calculate the symmetric of a point with respect to the symmetry origin.
-    :param symmetry_origin: the center of the symmetry
-    :param point: the point to be reflected
-    :return: the symmetrical point
-    """
-    assert (symmetry_origin.shape == point.shape), "Shapes don't match"
-    dst = 2*symmetry_origin-point
-    return dst
-
-
-# def inverse_dictionary(original_dict: Dict[Any], unique_values: bool = False) -> Dict[Any]:
-#     """Swap keys and values in the dictionary
-#     :param original_dict: the dictionary that will be inverted
-#     :param unique_values: true if the values in the original dictionary are unique.
-#     If false, the inverse dictionary will contain the list of original keys that were mapped to the same value, i.e:
-#     original_dict = {'a':1, 'b':1, 'c':2} -> inverse_dict = {1:['a','b'], 2:['c']}"""
-#     inverse_dict = {}
+# def symmetrical_wrt_center_point(symmetry_origin: np.ndarray, point: np.ndarray) -> np.ndarray:
+#     """
+#     Calculate
+#     the
+#     symmetric
+#     of
+#     a
+#     point
+#     with respect to the symmetry origin.
+#     :param
+#     symmetry_origin: the
+#     center
+#     of
+#     the
+#     symmetry
+#     :param
+#     point: the
+#     point
+#     to
+#     be
+#     reflected
+#     :return: the
+#     symmetrical
+#     point
+#     """
+#     assert (symmetry_origin.shape == point.shape), "Shapes don't match"
+#     dst = 2*symmetry_origin-point
+#     return dst
 #
-#     if unique_values:
-#         for k, v in original_dict.items():
-#             inverse_dict[v] = original_dict.get(v, [])
-#             inverse_dict[v].append(k)
-#     else:
-#         for k, v in original_dict.items():
-#             inverse_dict[v] = k
-#     return inverse_dict
+#     # def inverse_dictionary(original_dict: Dict[Any], unique_values: bool = False) -> Dict[Any]:
+#     #     """
+#     Swap
+#     keys and values in the
+#     dictionary
+#
+#
+# #     :param original_dict: the dictionary that will be inverted
+# #     :param unique_values: true if the values in the original dictionary are unique.
+# #     If false, the inverse dictionary will contain the list of original keys that were mapped to the same value, i.e:
+# #     original_dict = {'a':1, 'b':1, 'c':2} -> inverse_dict = {1:['a','b'], 2:['c']}"""
+# #     inverse_dict = {}
+# #
+# #     if unique_values:
+# #         for k, v in original_dict.items():
+# #             inverse_dict[v] = original_dict.get(v, [])
+# #             inverse_dict[v].append(k)
+# #     else:
+# #         for k, v in original_dict.items():
+# #             inverse_dict[v] = k
+# #     return inverse_dict
 
 
 def check_membership_in_sorted_set_and_pop(element: Scalar, sorted_list: List[Scalar]) -> Tuple[bool, List[Scalar]]:
@@ -263,7 +327,7 @@ def print_images(images, titles):
     plt.show()
 
 
-def print_color_image(image, title = ""):
+def print_color_image(image, title=""):
     image = image[:, :, ::-1]
     tmp = plt.subplot(1, 1, 1)
     tmp.set_title(title)

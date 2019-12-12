@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score, roc_curve
 from sklearn.metrics import confusion_matrix
 from fingerprint_recognition import *
-from utils import save
+from utils import save, frange
 
 Minutia = Tuple[Any, Any, Any, Any, Any]
 
@@ -133,11 +133,13 @@ def positive_negative_split_sample(size: int, positives_percentage: float = 0.5)
     p = random.sample(dataset_dumps, pos)
 
     for k in range(pos):
-        # Here I'm doing some magic to grab a fingerprint which is similar to the extracted one,
-        # but not exactly the same (at least most of the times)
         p1 = p[k]
+        selected_sample = int(str(p1)[-1])
         p2 = list(str(p[k]))
-        p2[-1] = str(random.randint(0, 4))  # change last character
+        numbers = [0, 1, 2, 3, 4]
+        del numbers[selected_sample]
+        r = int(random.choice(numbers))
+        p2[-1] = str(r)  # change last character
         p2 = Path("".join(p2))
 
         with open(p2, 'rb') as file_obj:
@@ -187,10 +189,10 @@ def eval_performance(y_true, y_pred):
     cm = confusion_matrix(y_true, y_pred)
     # tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
 
-    print("Hamming distance: {:.3f}\n"
-          "Precision: {:.3f}\n"
-          "Recall: {:.3f}\n"
-          "F1 score {:.3f} "
+    print("Hamming distance: {}\n"
+          "Precision: {}\n"
+          "Recall: {}\n"
+          "F1 score: {}\n"
           "Confusion Matrix:\n{}".format(h, precision, recall, f_score, cm))
 
 
@@ -229,6 +231,19 @@ def load_results(thresh, positive_perc, test_size, random_seed):
     return res
 
 
+# def eval_predictions(y_true, scores: np.ndarray):
+#     """
+#     Eval scores according to threshold
+#     :param y_true: expected classes
+#     :param scores: matching scores
+#     """
+#     y_pred = []
+#     for th in frange(start=0.4, stop=0.8, step=0.1):
+#         for i in range(len(scores)):
+#             if scores[i] >= th:
+#                 y_pred[i] =
+
+
 if __name__ == '__main__':
     # Call this when you want to process new fingerprints (it may take some time)
     # sample_fingerprint_dataset(50)
@@ -236,11 +251,10 @@ if __name__ == '__main__':
 
     # fingerprint matching
     threshold = 0.5
-    positive_percentage = 0.3
-    test_set_size = 200
+    positive_percentage = 0.9
+    test_set_size = 100
 
-    if load_res:
-
+    if not load_res:
         test_set = positive_negative_split_sample(size=test_set_size, positives_percentage=positive_percentage)
         positives = math.floor(positive_percentage*test_set_size)
         y_true = np.array([1]*positives+[0]*(len(test_set)-positives), dtype=np.uint8)

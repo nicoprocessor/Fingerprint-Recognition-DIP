@@ -5,6 +5,7 @@
 
 # Dataset
 SOCOFing/
+CASIA-Fingerprint/
 *.db
 *.BMP
 *.png
