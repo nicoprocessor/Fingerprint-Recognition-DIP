@@ -5,7 +5,7 @@ __author__ = "Nicola Onofri, Luigi Bonassi"
 __license__ = "GPL"
 __email__ = "nicola.onofri@gmail.com, " \
             "l.bonassi005@studenti.unibs.it"
-
+import numpy as np
 import math
 import random
 import re
@@ -18,11 +18,12 @@ from sklearn.metrics import precision_recall_fscore_support, roc_auc_score, roc_
 from sklearn.metrics import confusion_matrix
 from fingerprint_recognition import *
 from utils import save, frange
+import sys
 
 Minutia = Tuple[Any, Any, Any, Any, Any]
 
 # global paths
-dataset_path = Path.cwd().parent/'res'/'CASIA-Fingerprint'
+dataset_path = Path.cwd().parent/'res'/'casia'
 minutiae_path = Path.cwd().parent/'res'/'minutiae_dataset'
 results_path = Path.cwd().parent/'res'/'dst'
 global_seed = 101
@@ -79,10 +80,13 @@ def process_fingerprint(fingerprint: np.ndarray) -> Tuple[List[Minutia], List[Mi
     ridge_identification_map, labels = find_lines(processed_img)
     freq = 1/np.mean(ridge_frequency)
 
-    minutiae_tuned = false_minutiae_removal(processed_img, minutiae_tuned, ridge_identification_map, freq/1.5)
+    minutiae_tuned = false_minutiae_removal(processed_img, minutiae_tuned, ridge_identification_map, freq)
     minutiae_tuned_removed = remove_minutiae(minutiae_tuned)
     minutiae_normal = false_minutiae_removal(processed_img, minutiae, ridge_identification_map, freq)
     minutiae_normal_removed = remove_minutiae(minutiae_normal)
+
+    #print_minutiae(processed_img, minutiae_tuned_removed, 255, 0, 0, 'tuned')
+    #print_minutiae(processed_img, minutiae_normal_removed, 255, 0, 0, 'normal')
     return minutiae_normal_removed, minutiae_tuned_removed
 
 
@@ -246,13 +250,14 @@ def load_results(thresh, positive_perc, test_size, random_seed):
 
 if __name__ == '__main__':
     # Call this when you want to process new fingerprints (it may take some time)
+    sys.setrecursionlimit(5000)
     # sample_fingerprint_dataset(50)
     load_res = False
 
     # fingerprint matching
     threshold = 0.5
-    positive_percentage = 0.9
-    test_set_size = 100
+    positive_percentage = 0.5
+    test_set_size = 200
 
     if not load_res:
         test_set = positive_negative_split_sample(size=test_set_size, positives_percentage=positive_percentage)
@@ -284,6 +289,13 @@ if __name__ == '__main__':
         elapsed = end-start
         print("\nTotal execution time: {:.3}s\n"
               "Match execution time: {:4f}s/match".format(elapsed, (elapsed/test_set_size)))
+        veri = int(len(scores)*positive_percentage)
+        print('media veri:' + str(np.mean(scores[:veri])))
+        print('var veri:' + str(np.var(scores[:veri])))
+        print('75 percentile veri:' + str(np.percentile(scores[:veri], 75)))
+        print('media falsi:' + str(np.mean(scores[veri:])))
+        print('var falsi:' + str(np.var(scores[veri:])))
+        print('75 percentile falsi:' + str(np.percentile(scores[veri:], 75)))
     else:
         # Load previously computed result
         y_true, y_pred = load_results(thresh=threshold, positive_perc=positive_percentage,

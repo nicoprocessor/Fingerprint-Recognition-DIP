@@ -31,11 +31,12 @@ def pre_processing(img: np.ndarray):
     """
     # image enhancement
     negated = cv2.bitwise_not(img)
-    # print_images([negated], ["original fingerprint"])
-    denoised = cv2.fastNlMeansDenoising(negated, None, 15)
+    denoised = cv2.fastNlMeansDenoising(negated, None, 30)
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     equalized = clahe.apply(denoised)
     normalized = enhancement.normalize(equalized)
+
+    #print_images([negated, denoised], ['negated', 'denoised'])
 
     # Gabor filtering
     ridge_orientation = gabor.get_orientation_map(normalized)
@@ -49,7 +50,7 @@ def pre_processing(img: np.ndarray):
     image = np.where(roi == 1.0, image, 1.0)
     binarized = enhancement.binarization(image)
     thinned = enhancement.ridge_thinning(binarized)
-    # print_images([thinned], ["thinned fingerprint"])
+    #print_images([thinned], ["thinned fingerprint"])
     return thinned, ridge_orientation, ridge_frequency
 
 
@@ -93,6 +94,7 @@ if __name__ == '__main__':
 
     minutiae1, minutiae11 = minutiae1[0], minutiae1[1]
     minutiae2, minutiae22 = minutiae2[0], minutiae2[1]
+
 
     # matching
     msg = matching.match(minutiae1, minutiae2, minutiae11, minutiae22)
