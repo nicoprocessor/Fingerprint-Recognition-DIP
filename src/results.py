@@ -80,9 +80,9 @@ def process_fingerprint(fingerprint: np.ndarray) -> Tuple[List[Minutia], List[Mi
     ridge_identification_map, labels = find_lines(processed_img)
     freq = 1/np.mean(ridge_frequency)
 
-    minutiae_tuned = false_minutiae_removal(processed_img, minutiae_tuned, ridge_identification_map, freq)
+    minutiae_tuned = false_minutiae_removal(processed_img, minutiae_tuned, ridge_identification_map, freq*2)
     minutiae_tuned_removed = remove_minutiae(minutiae_tuned)
-    minutiae_normal = false_minutiae_removal(processed_img, minutiae, ridge_identification_map, freq)
+    minutiae_normal = false_minutiae_removal(processed_img, minutiae, ridge_identification_map, freq*2)
     minutiae_normal_removed = remove_minutiae(minutiae_normal)
 
     #print_minutiae(processed_img, minutiae_tuned_removed, 255, 0, 0, 'tuned')
@@ -251,13 +251,13 @@ def load_results(thresh, positive_perc, test_size, random_seed):
 if __name__ == '__main__':
     # Call this when you want to process new fingerprints (it may take some time)
     sys.setrecursionlimit(5000)
-    # sample_fingerprint_dataset(50)
+    #sample_fingerprint_dataset(100)
     load_res = False
 
     # fingerprint matching
-    threshold = 0.5
+    threshold = 0.2
     positive_percentage = 0.5
-    test_set_size = 200
+    test_set_size = 100
 
     if not load_res:
         test_set = positive_negative_split_sample(size=test_set_size, positives_percentage=positive_percentage)
@@ -304,3 +304,24 @@ if __name__ == '__main__':
     # performance evaluation
     eval_performance(y_true, y_pred)
     plot_roc(y_true, y_pred, threshold)  # TODO fix
+
+    # tp = 0
+    # tn = 0
+    # fp = 0
+    # fn = 0
+    #
+    # for i in range(len(y_true)):
+    #     if y_true[i] == y_pred[i] == 1:
+    #         tp+=1
+    #     if y_true[i] == y_pred[i] == 0:
+    #         tn+=1
+    #     if y_true[i] == 1 and y_pred[i] == 0:
+    #         fn+=1
+    #     if y_true[i] == 0 and y_pred[i] == 1:
+    #         fp+=1
+    #
+    # print('precision =' + str(tp/(tp+fp)))
+    # print('recall =' + str(tp / (tp + fn)))
+    # print('accuracy =' + str((tp+tn) / (fn + tn + tp + fp)))
+    # print('debug')
+

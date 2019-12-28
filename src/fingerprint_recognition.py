@@ -31,7 +31,7 @@ def pre_processing(img: np.ndarray):
     """
     # image enhancement
     negated = cv2.bitwise_not(img)
-    denoised = cv2.fastNlMeansDenoising(negated, None, 30)
+    denoised = cv2.fastNlMeansDenoising(negated, None, 50)
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     equalized = clahe.apply(denoised)
     normalized = enhancement.normalize(equalized)
